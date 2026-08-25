@@ -20,7 +20,7 @@ mark="M 341,157 C 341,100 263,100 271,171 L 242,341 C 249,412 171,412 171,355"
 
 magick -size 512x512 xc:none \
   -fill '#2f7d95' -draw 'roundrectangle 8,8,503,503,112,112' \
-  -fill none -stroke white -strokewidth 60 \
+  -fill none -stroke white -strokewidth 50 \
   -draw "stroke-linecap round stroke-linejoin round path '$mark'" \
   "$out/icon-512.png"
 
