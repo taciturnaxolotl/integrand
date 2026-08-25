@@ -20,12 +20,12 @@
     .panel {
       --paper: #fbf7ef; --ink: #1f2224; --muted: #7d6f52; --line: #ddd3c0;
       --accent: #276a80; --accent-ink: #fff; --sunk: #f2ebde;
-      --bad: #9c3019; --good: #3f6a29;
+      --bad: #9c3019;
     }
     .panel[data-theme="dark"] {
       --paper: #191c1e; --ink: #f3eee4; --muted: #aba18e; --line: #414850;
       --accent: #6cc0da; --accent-ink: #0c1518; --sunk: #0f1315;
-      --bad: #f2907a; --good: #a8d48c;
+      --bad: #f2907a;
     }
 
     .backdrop { position: fixed; background: rgba(12, 18, 24, 0.45); z-index: 2147483646; }
@@ -52,7 +52,6 @@
     .status { margin-left: auto; font-size: 11px; letter-spacing: .05em;
               color: var(--muted); text-transform: lowercase; }
     .status.bad { color: var(--bad); }
-    .status.good { color: var(--good); }
     .close { align-self: center; border: 0; background: none; color: var(--muted);
              font: 15px/1 ui-serif, Georgia, serif; padding: 0 1px; cursor: pointer; }
     .close:hover { color: var(--ink); }
@@ -306,8 +305,10 @@
         <button class="ghost sym">Symbolab</button>
         <button class="ghost icon pencil" title="Edit the LaTeX">&#9998;</button>
       </div>
-    `, failed ? "not converted" : unverified ? "unverified" : `d${result.var} · verified`,
-       blocked ? "bad" : "good");
+    // Silent when it worked. The rendered expression already says what was read
+    // and the live buttons already say it is usable, so a permanent "verified"
+    // is chrome that mostly makes the warnings harder to notice.
+    `, failed ? "not converted" : unverified ? "unverified" : "", blocked ? "bad" : "");
 
     const rendered = body.querySelector(".render");
     if (result.mathml && mountMath(rendered, result.mathml)) rendered.classList.remove("hidden");
