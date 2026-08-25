@@ -31,7 +31,9 @@ _SUBSTITUTIONS: list[tuple[str, str]] = [
     (r"\\left|\\right", ""),
     # \big \Bigg \Bigl \bigr … — sizing hints with no meaning for us
     (r"\\[bB]igg?[lrm]?", ""),
-    (r"\\displaystyle\b|\\limits\b|\\nolimits\b", ""),
+    # not \b: an underscore is a word character, so `\limits_{1}` has no
+    # boundary after "limits" and the styling survives into the parser
+    (r"\\(?:displaystyle|limits|nolimits)(?![a-zA-Z])", ""),
     (r"\\(?:quad|qquad)\b", " "),
     (r"\\[,;:!]", ""),
     (r"~", " "),  # LaTeX's non-breaking space
@@ -46,7 +48,7 @@ _SUBSTITUTIONS: list[tuple[str, str]] = [
     (r"\{(\\frac\{(?:d|\\partial)\}\{[^{}]*\})\}", r"\1"),
     # the trailing space matters: brace tightening has already removed the one
     # that separated the command from what follows, and `\int` + `x` is `\intx`
-    (r"\{\s*(\\(?:iiint|iint|int|oint|sum|prod))\s*\}", r"\1 "),
+    (r"\{\s*(\\(?:iiint|iint|int|oint|sum|prod)(?:[_^](?:\{[^{}]*\}|\S))*)\s*\}", r"\1 "),
     (r"\{\\rm\s+([^{}]*)\}", r"\1"),
     (r"\\(?:text|mathrm|mathit)\{([^{}]*)\}", r"\1"),
 ]
@@ -174,13 +176,54 @@ def _strip_wrapping_braces(latex: str) -> str:
     return latex
 
 
+#: MathJax wrappers that carry styling or an id and take the content as their
+#: second argument. integral-calculator hangs them off every step and bound.
+_WRAPPERS = ("cssId", "class", "style", "bbox", "texttip", "toggle")
+
+#: The site draws an absent bound as a `?` placeholder. It is not a number.
+_PLACEHOLDER_BOUND = re.compile(r"(?:\^|_)\{\?\}")
+
+
+def _closing(latex: str, opening: int) -> int:
+    """Index of the brace matching the one at `opening`, or -1."""
+    depth = 0
+    for index in range(opening, len(latex)):
+        if latex[index] == "{":
+            depth += 1
+        elif latex[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return index
+    return -1
+
+
+def _unwrap_wrappers(latex: str) -> str:
+    """Replace `\cssId{id}{body}` with `body`, brace nesting and all.
+
+    A regex cannot do this: the body routinely contains braces of its own,
+    as in `\cssId{int-var-mathjax}{\mathrm{d}x}`.
+    """
+    for name in _WRAPPERS:
+        token = f"\\{name}{{"
+        while (start := latex.find(token)) >= 0:
+            first = _closing(latex, start + len(token) - 1)
+            if first < 0 or first + 1 >= len(latex) or latex[first + 1] != "{":
+                break
+            second = _closing(latex, first + 1)
+            if second < 0:
+                break
+            latex = latex[:start] + latex[first + 2 : second] + latex[second + 1 :]
+    return latex
+
+
 #: A step lifted out of a worked derivation carries the equals sign that joined
 #: it to the line above. There is nothing on the left of it to be equal to.
 _LEADING_RELATION = re.compile(r"^\s*[=<>]\s*")
 
 
 def normalize(latex: str) -> str:
-    out = _LEADING_RELATION.sub("", latex.strip())
+    out = _LEADING_RELATION.sub("", _unwrap_wrappers(latex).strip())
+    out = _PLACEHOLDER_BOUND.sub("", out)
     for bad, good in _UNICODE.items():
         out = out.replace(bad, good)
     out = _LOOSE_BRACES.sub(r"\1", out)

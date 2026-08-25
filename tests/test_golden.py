@@ -109,6 +109,14 @@ OCR_SHAPES = [
     ("\\int (9 \u2212 \\tan(\\frac{\u03b8}{2})) d\u03b8", "9 - tan((theta)/(2))", "theta"),
     ("\\int \\frac{\\sqrt[3]{x}}{\\sqrt[3]{x} \u2212 1} dx",
      "(root(3, x))/(root(3, x) - 1)", "x"),
+    # integral-calculator hangs MathJax wrappers off every step and bound, and
+    # draws an absent bound as a `?` placeholder
+    (r"{\displaystyle\int\limits^{\cssId{u}{\class{placeholder}{?}}}"
+     r"_{\cssId{l}{\class{placeholder}{?}}}} x\sin(x) \; \cssId{v}{\mathrm{d}x}",
+     "x*sin(x)", "x"),
+    (r"{\displaystyle\int\limits^{4}_{0}} \dfrac{5}{6x+1} \; \mathrm{d}x",
+     "(5)/(6*x + 1)", "x"),
+    (r"{\displaystyle\int\limits_{1}^{e}} \dfrac{1}{x} \mathrm{d}x", "(1)/(x)", "x"),
     # a step lifted out of a worked derivation, equals sign and all
     (r"= {\displaystyle\int} \left(2u + \dfrac{59}{u} + 23\right) \mathrm{d}u",
      "(2*u + (59)/(u)) + 23", "u"),
@@ -161,6 +169,9 @@ UNSUPPORTED = [
     (r"\int f(x) dx", "convert_failed"),
     # two operators in one equation is a guess, not a reading
     (r"\int_1^x \frac{3}{t} dt = \int_{1/36}^x \frac{1}{t} dt", "unsupported_operator"),
+    # a partial result plus the integral still to do: taking just the integral
+    # would answer a different question than the one on screen
+    (r"= -x\cos(x) + {\displaystyle\int} \cos(x) \mathrm{d}x", "unsupported_operator"),
     # past what the site's order dropdown offers, so it is left unexpanded
     (r"\frac{d^{7}}{dx^{7}}(x)", "unsupported_operator"),
     # a mixed partial never matches the expansion, so it stays a product
@@ -222,6 +233,17 @@ def test_parse_failures_are_one_readable_line():
     assert "\n" not in detail
     assert "~" not in detail
     assert detail.startswith("could not read the maths near")
+
+
+def test_refusals_say_something():
+    """"got Mul" is true and tells nobody anything."""
+    with pytest.raises(ConvertError) as nothing:
+        convert(r"= \dfrac{2x^{2}+7x-1}{x-4}")
+    assert nothing.value.detail == "no integral or derivative here"
+
+    with pytest.raises(ConvertError) as tangled:
+        convert(r"= -x\cos(x) + {\displaystyle\int} \cos(x) \mathrm{d}x")
+    assert tangled.value.detail == "the operator is mixed into a longer expression"
 
 
 def test_routing():

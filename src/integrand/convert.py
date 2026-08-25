@@ -153,9 +153,13 @@ def _route(expr) -> tuple[str, object, Symbol, tuple | None, int]:
                 "unsupported_operator", f"a derivative of order {len(variables)}"
             )
         return "derivative", expr.expr, variables[0], None, len(variables)
+    # "got Mul" is true and tells nobody anything. Whether an operator is in
+    # there at all is the difference between "wrong sort of thing" and "right
+    # thing, tangled up with the rest of a line".
+    if not expr.atoms(Integral, Derivative):
+        raise ConvertError("unsupported_operator", "no integral or derivative here")
     raise ConvertError(
-        "unsupported_operator",
-        f"expected an integral or derivative, got {type(expr).__name__}",
+        "unsupported_operator", "the operator is mixed into a longer expression"
     )
 
 

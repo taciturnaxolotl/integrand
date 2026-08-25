@@ -423,11 +423,11 @@
       <div class="render hidden"></div>
       ${failed ? `<div class="latex">${escape(latex)}</div>` : ""}
       ${failed ? `<div class="note">${escape(result.detail || result.error)}</div>` : ""}
-      ${unverified ? `<div class="note">Round-trip check failed — this may not be the expression above.</div>` : ""}
+      ${unverified ? `<div class="note">Reading this back did not give the same expression, so the link may solve something else. The copied form is still what would be sent.</div>` : ""}
       <div class="row">
         <button class="go" ${blocked ? "disabled" : ""}>${where} calc</button>
         <button class="ghost sym">Symbolab</button>
-        <button class="ghost icon copy" ${blocked ? "disabled" : ""}
+        <button class="ghost icon copy" ${failed ? "disabled" : ""}
                 title="Copy the expression">${COPY_ICON}</button>
       </div>
     `, failed ? "not converted" : unverified ? "unverified" : "", blocked ? "bad" : "");
