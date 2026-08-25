@@ -23,7 +23,10 @@ Then load `extension/` unpacked: `chrome://extensions` → developer mode →
 read, hit **Open calculator**.
 
 The extension only ever talks to the service, so swapping OCR backends does not
-touch it.
+touch it. Before it captures anything it asks the page whether it already knows
+its own maths — KaTeX, MathJax, MathML, Wikipedia alt text and WebAssign's
+watex markup all carry it — and where they do, the result is exact and OCR
+never runs. See [RECOGNITION.md](RECOGNITION.md).
 
 > The default `symbolab` backend posts images to Symbolab's unauthenticated
 > `getImageId` endpoint. It is there because it is accurate enough to develop

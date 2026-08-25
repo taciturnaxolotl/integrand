@@ -13,7 +13,7 @@ chrome.action.onClicked.addListener(async (tab) => {
   if (!tab.url?.startsWith("http")) return; // activeTab grants nothing on chrome://
   await chrome.scripting.executeScript({
     target: { tabId: tab.id },
-    files: ["content/overlay.js"],
+    files: ["content/page-math.js", "content/overlay.js"],
   });
   // The script starts a crop on load; this covers the already-injected case.
   chrome.tabs.sendMessage(tab.id, { type: "start-crop" }).catch(() => {});

@@ -203,6 +203,17 @@
   async function submit(rect) {
     showPanel(`<div class="waiting"><span class="spinner"></span>Reading…</div>`, "working");
 
+    // Ask the page first. Where it knows its own maths — KaTeX, MathJax,
+    // MathML, Wikipedia alt text, WebAssign's watex — the answer is exact and
+    // costs nothing, and OCR only has to cover what is genuinely just pixels.
+    const known = globalThis.integrandPageMath?.latexUnder({
+      left: rect.x, top: rect.y, right: rect.x + rect.w, bottom: rect.y + rect.h,
+    });
+    if (known) {
+      const converted = await chrome.runtime.sendMessage({ type: "convert", latex: known.latex });
+      return render(converted, known.how);
+    }
+
     // The overlay must be off-screen *and painted* before the capture, or it
     // lands in the screenshot. Two frames is the reliable way to know that.
     await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
@@ -281,7 +292,7 @@
   // four is misread in a way that still converts and still verifies — a
   // misread variable is a valid expression, just not the one on screen — so
   // the only real check is a human glancing at it.
-  function render(result) {
+  function render(result, source) {
     if (!result || result.error === "network") {
       return showPanel(`<div class="note">No answer from the service. Is it running?</div>`, "offline");
     }
@@ -308,7 +319,9 @@
         <button class="ghost sym">Symbolab</button>
         <button class="ghost icon pencil" title="Edit the LaTeX">&#9998;</button>
       </div>
-    `, failed ? "not converted" : unverified ? "unverified" : "", blocked ? "bad" : "");
+    // Read off the page rather than guessed at, so it needs no second look.
+    `, failed ? "not converted" : unverified ? "unverified" : source ? "from page" : "",
+       blocked ? "bad" : "");
 
     const rendered = body.querySelector(".render");
     if (result.mathml && mountMath(rendered, result.mathml)) rendered.classList.remove("hidden");

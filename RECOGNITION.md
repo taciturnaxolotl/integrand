@@ -26,6 +26,10 @@ with a crop 14px proud of the formula (covered 1.0) and one 3px inside it
 The `{\displaystyle …}` wrapper Wikipedia uses is already handled: `normalize`
 strips `\displaystyle` and `_strip_wrapping_braces` drops the braces.
 
+All of the above is implemented in `extension/content/page-math.js`, which the
+overlay consults before it captures anything. OCR now only has to cover what is
+genuinely just pixels.
+
 ## WebAssign needs its own path
 
 WebAssign renders neither LaTeX nor MathML for questions. It uses "watex":
@@ -43,6 +47,25 @@ This matters because OCR is a poor fit there: the maths renders at **13px** and
 a typical expression is ~60px wide. At devicePixelRatio 2 that is roughly our
 110dpi corpus, which scored 24/35. Reconstructing from the DOM is both exact
 and easier than fighting the resolution.
+
+The walker is implemented and **agrees with hand-transcribed ground truth on
+36/36 expressions** of one assignment — 35 converting identically and one (an
+equation with an integral on both sides) refused by both.
+
+The full vocabulary is small: `watexfraction`/`watexnumerator`/
+`watexdenominator`, `watexintcomplex`/`watexintlimitcomplex` with
+`watexintabove`/`watexintbelow`/`watexintcontent`, `watexsqrt` with an optional
+`watexsqrtroot*` index, `watexparenleft`/`watexparenright`, and `<sup>`.
+
+Two things were not guessable and had to be found by looking:
+
+- **Delimiters are tables, not characters.** `watexparenleft` sits on a
+  `<table>` whose only content is an image. Handling it at the image level
+  drops it silently, which turns `x^{2/3}(8 + x^{1/3})` into
+  `x^{2/3}·8 + x^{1/3}` — converts, verifies, wrong question.
+- **Variables are Mathematical Alphanumeric codepoints**, not ASCII. WebAssign
+  writes `𝜃` (U+1D703), not `θ`. `String.normalize("NFKD")` folds the whole
+  block back to plain letters.
 
 ## Better models, if OCR is unavoidable
 

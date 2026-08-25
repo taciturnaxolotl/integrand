@@ -103,6 +103,12 @@ OCR_SHAPES = [
     (r"\int \sqrt[3]{[x+1]^2} dx", "root(3, (x + 1)^(2))", "x"),
     # LaTeX's non-breaking space
     (r"\int x^2 ~ dx", "x^(2)", "x"),
+    # shapes the page reader emits when it walks WebAssign's watex markup
+    ("\\int \\frac{dx}{x(\\ln(x^{2}))^{9}}", "(1)/(x*(ln(x^(2)))^(9))", "x"),
+    ("\\int \\cot(\\frac{\u03b8}{9}) d\u03b8", "cot((theta)/(9))", "theta"),
+    ("\\int (9 \u2212 \\tan(\\frac{\u03b8}{2})) d\u03b8", "9 - tan((theta)/(2))", "theta"),
+    ("\\int \\frac{\\sqrt[3]{x}}{\\sqrt[3]{x} \u2212 1} dx",
+     "(root(3, x))/(root(3, x) - 1)", "x"),
     # glued products are genuine products, not dropped backslashes
     (r"\int xy\,dx", "x*y", "x"),
 ]
