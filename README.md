@@ -39,6 +39,11 @@ uv run python scripts/render_corpus.py corpus
 uv run --group ocr python scripts/benchmark.py corpus --backend pix2tex --device cpu
 ```
 
+```sh
+node scripts/preview-panel.js          # render the result panel in every state
+python3 -m http.server -d .preview 8799
+```
+
 See [BENCHMARKS.md](BENCHMARKS.md) for backend numbers.
 
 This depends on someone else's free site and will break if David Scherfgen

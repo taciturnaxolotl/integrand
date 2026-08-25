@@ -34,25 +34,28 @@ async function post(path, payload) {
 
 // Both calculators read their hash once, at document parse time — there is no
 // hashchange listener and no reload poll. Rewriting only the fragment of a
-// loaded tab is a same-document navigation and would do nothing, so the query
-// string carries a nonce to force a real load. It has to be a clock rather
+// loaded tab is a same-document navigation and would do nothing, so a nonce
+// goes in the query string to force a real load. It has to be a clock rather
 // than a counter: the worker is killed between snips and a counter would
 // restart at 1 and stop busting anything.
-async function openCalculator(url) {
-  const [base, hash] = url.split("#");
-  const target = `${base}?_=${Date.now()}#${hash}`;
-  const key = new URL(url).host;
+//
+// Built with the URL API rather than string surgery because Symbolab's link
+// carries a query and no fragment, and the calculators carry the reverse.
+async function openResult(url) {
+  const target = new URL(url);
+  target.searchParams.set("_", Date.now());
+  const key = target.host;
 
   const { tabs = {} } = await chrome.storage.session.get("tabs");
   if (tabs[key]) {
     try {
-      await chrome.tabs.update(tabs[key], { url: target, active: true });
+      await chrome.tabs.update(tabs[key], { url: target.href, active: true });
       return;
     } catch {
       // the user closed it; fall through and make a new one
     }
   }
-  const tab = await chrome.tabs.create({ url: target });
+  const tab = await chrome.tabs.create({ url: target.href });
   await chrome.storage.session.set({ tabs: { ...tabs, [key]: tab.id } });
 }
 
@@ -77,7 +80,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   }
 
   if (message.type === "open") {
-    openCalculator(message.url).then(() => respond({ ok: true }));
+    openResult(message.url).then(() => respond({ ok: true }));
     return true;
   }
 });

@@ -13,6 +13,22 @@
 
   const CSS = `
     :host { all: initial; }
+
+    /* Light values live on bare :root so a page with no colour-scheme
+       preference still gets a complete palette. */
+    .panel, .layer {
+      --paper: #fbf7ef; --ink: #1f2224; --muted: #857658; --line: #ddd3c0;
+      --accent: #2f7d95; --accent-ink: #fff; --sunk: #f2ebde;
+      --bad: #a3341f; --good: #46722f;
+    }
+    @media (prefers-color-scheme: dark) {
+      .panel, .layer {
+        --paper: #1b1e20; --ink: #e9e3d7; --muted: #948a78; --line: #343a3d;
+        --accent: #57a9c4; --accent-ink: #10181b; --sunk: #23272a;
+        --bad: #e0765c; --good: #93c07a;
+      }
+    }
+
     .backdrop { position: fixed; background: rgba(12, 18, 24, 0.45); z-index: 2147483646; }
     .backdrop.left { top: 0; bottom: 0; left: 0; width: 0; }
     .backdrop.right { top: 0; bottom: 0; right: 0; left: 0; }
@@ -22,33 +38,47 @@
     .layer { position: fixed; inset: 0; z-index: 2147483645; cursor: crosshair; display: none; }
     .layer.on { display: block; }
 
-    .panel { position: fixed; right: 20px; bottom: 20px; width: 400px; max-width: calc(100vw - 40px);
-             z-index: 2147483647; display: none; background: #fbf7ef; color: #1b1d1e;
-             border: 1px solid #cfc4ae; border-radius: 6px; box-shadow: 0 8px 28px rgba(0,0,0,.28);
-             font: 13px/1.5 ui-serif, Georgia, "Times New Roman", serif; padding: 14px 16px; }
+    .panel { position: fixed; right: 16px; bottom: 16px; width: 316px;
+             max-width: calc(100vw - 32px); z-index: 2147483647; display: none;
+             box-sizing: border-box; background: var(--paper); color: var(--ink);
+             border: 1px solid var(--line); border-radius: 7px;
+             box-shadow: 0 6px 22px rgba(0,0,0,.22);
+             font: 12px/1.45 ui-serif, Georgia, "Times New Roman", serif;
+             padding: 9px 11px 10px; }
     .panel.on { display: block; }
-    .panel h2 { margin: 0 0 10px; font-size: 13px; letter-spacing: .08em;
-                text-transform: uppercase; color: #7a6a53; font-weight: 600; }
-    .panel label { display: block; margin: 10px 0 4px; font-size: 11px;
-                   letter-spacing: .06em; text-transform: uppercase; color: #7a6a53; }
-    .panel textarea { width: 100%; box-sizing: border-box; min-height: 48px; resize: vertical;
-                      font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
-                      padding: 7px 8px; border: 1px solid #cfc4ae; border-radius: 4px;
-                      background: #fffdf8; color: #1b1d1e; }
-    .panel .infix { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
-                    background: #f0e9dc; border-radius: 4px; padding: 7px 8px;
-                    word-break: break-all; }
-    .row { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
-    button { font: inherit; font-size: 12px; padding: 6px 13px; border-radius: 4px;
-             border: 1px solid #1d4e63; background: #2f7d95; color: #fff; cursor: pointer; }
-    button.ghost { background: transparent; color: #1d4e63; }
-    button[disabled] { opacity: .45; cursor: not-allowed; }
-    .flag { margin-left: auto; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; }
-    .flag.bad { color: #a3341f; }
-    .flag.good { color: #3f6b34; }
-    .note { margin-top: 10px; font-size: 12px; color: #a3341f; }
-    .spinner { width: 13px; height: 13px; border: 2px solid #cfc4ae; border-top-color: #2f7d95;
-               border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; }
+
+    .head { display: flex; align-items: baseline; gap: 6px; margin-bottom: 7px; }
+    .mark { font-size: 13px; color: var(--muted); letter-spacing: .03em; }
+    .mark b { color: var(--ink); font-weight: 600; }
+    .status { margin-left: auto; font-size: 10.5px; letter-spacing: .04em;
+              color: var(--muted); font-variant: all-small-caps; }
+    .status.bad { color: var(--bad); }
+    .status.good { color: var(--good); }
+
+    textarea { display: block; width: 100%; box-sizing: border-box; height: 42px;
+               resize: vertical; font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+               padding: 6px 7px; border: 1px solid var(--line); border-radius: 4px;
+               background: var(--sunk); color: var(--ink); }
+    textarea:focus { outline: 1px solid var(--accent); outline-offset: -1px; }
+
+    .infix { margin-top: 5px; font: 10.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+             color: var(--muted); overflow: hidden; text-overflow: ellipsis;
+             white-space: nowrap; }
+    .note { margin-top: 6px; font-size: 11px; color: var(--bad); }
+
+    .row { display: flex; gap: 6px; align-items: center; margin-top: 9px; }
+    button { font: inherit; font-size: 11.5px; line-height: 1; padding: 6px 10px;
+             border-radius: 4px; border: 1px solid var(--accent);
+             background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+    button.ghost { background: transparent; color: var(--accent); }
+    button.icon { margin-left: auto; padding: 5px 8px; font-size: 13px; line-height: 1; }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+
+    .spinner { width: 11px; height: 11px; border: 2px solid var(--line);
+               border-top-color: var(--accent); border-radius: 50%;
+               animation: spin .7s linear infinite; display: inline-block;
+               vertical-align: -1px; margin-right: 6px; }
+    .waiting { color: var(--muted); font-size: 11.5px; }
     @keyframes spin { to { transform: rotate(360deg); } }
   `;
 
@@ -59,7 +89,10 @@
       <div class="crop hidden"></div>
     </div>
     <div class="panel">
-      <h2>integrand</h2>
+      <div class="head">
+        <span class="mark">∫&nbsp;<b>integrand</b></span>
+        <span class="status"></span>
+      </div>
       <div class="body"></div>
     </div>
   `;
@@ -74,6 +107,7 @@
   const crop = shadow.querySelector(".crop");
   const panel = shadow.querySelector(".panel");
   const body = shadow.querySelector(".body");
+  const status = shadow.querySelector(".status");
   const edges = {
     top: shadow.querySelector(".backdrop.top"),
     bottom: shadow.querySelector(".backdrop.bottom"),
@@ -156,14 +190,16 @@
   });
 
   async function submit(rect) {
-    showPanel(`<div class="row"><span class="spinner"></span>&nbsp; Reading…</div>`);
+    showPanel(`<div class="waiting"><span class="spinner"></span>Reading…</div>`, "working");
 
     // The overlay must be off-screen *and painted* before the capture, or it
     // lands in the screenshot. Two frames is the reliable way to know that.
     await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
 
     const { dataUrl, error } = await chrome.runtime.sendMessage({ type: "capture" });
-    if (error) return showPanel(`<div class="note">Could not capture the tab: ${escape(error)}</div>`);
+    if (error) {
+      return showPanel(`<div class="note">Could not capture the tab: ${escape(error)}</div>`, "failed", "bad");
+    }
 
     const image = await crop_(dataUrl, rect);
     const response = await chrome.runtime.sendMessage({ type: "snip", image });
@@ -196,48 +232,61 @@
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   }
 
+  //: Symbolab takes the LaTeX straight in the path, so that button works even
+  //: when our own conversion refused the expression. It is the escape hatch.
+  const SYMBOLAB = "https://www.symbolab.com/solver/step-by-step/";
+
   // The LaTeX is shown on success, not only on failure. Roughly one snip in
   // four is misread in a way that still converts and still verifies — a
   // misread variable is a valid expression, just not the one on screen — so
   // the only real check is a human glancing at it.
   function render(result) {
     if (!result || result.error === "network") {
-      return showPanel(`<div class="note">No answer from the service. Is it running?</div>`);
+      return showPanel(`<div class="note">No answer from the service. Is it running?</div>`, "offline");
     }
 
     const latex = result.latex ?? "";
     const failed = Boolean(result.error);
     const unverified = !failed && !result.verified;
+    const blocked = failed || unverified;
+    const where = result.kind === "derivative" ? "Derivative" : "Integral";
 
     showPanel(`
-      <label>What it read</label>
       <textarea class="latex" spellcheck="false">${escape(latex)}</textarea>
-      ${failed ? "" : `<label>Sent as</label><div class="infix">${escape(result.infix)}</div>`}
-      ${failed ? `<div class="note">${escape(result.error)}: ${escape(result.detail ?? "")}</div>` : ""}
-      ${unverified ? `<div class="note">The round-trip check failed, so this may not be the expression above. Fix it and try again.</div>` : ""}
+      ${blocked ? "" : `<div class="infix" title="${escape(result.infix)}">${escape(result.infix)}</div>`}
+      ${failed ? `<div class="note">${escape(result.detail || result.error)}</div>` : ""}
+      ${unverified ? `<div class="note">Round-trip check failed — this may not be the expression above.</div>` : ""}
       <div class="row">
-        <button class="go" ${failed || unverified ? "disabled" : ""}>Open calculator</button>
-        <button class="ghost again">Re-read edit</button>
-        <span class="flag ${failed || unverified ? "bad" : "good"}">
-          ${failed ? "not converted" : unverified ? "unverified" : `${result.kind} · d${result.var} · verified`}
-        </span>
+        <button class="go" ${blocked ? "disabled" : ""}>${where} calc</button>
+        <button class="ghost sym">Symbolab</button>
+        <button class="ghost icon again" title="Re-read the edited LaTeX">↻</button>
       </div>
-    `);
+    `, failed ? "not converted" : unverified ? "unverified" : `d${result.var} · verified`,
+       blocked ? "bad" : "good");
 
-    body.querySelector(".go")?.addEventListener("click", () => {
-      chrome.runtime.sendMessage({ type: "open", url: result.url });
-      hidePanel();
+    body.querySelector(".go")?.addEventListener("click", () => open_(result.url));
+
+    body.querySelector(".sym").addEventListener("click", () => {
+      const edited = body.querySelector(".latex").value;
+      open_(`${SYMBOLAB}${encodeURIComponent(edited)}`);
     });
 
     body.querySelector(".again").addEventListener("click", async () => {
       const edited = body.querySelector(".latex").value;
-      showPanel(`<div class="row"><span class="spinner"></span>&nbsp; Converting…</div>`);
+      showPanel(`<div class="waiting"><span class="spinner"></span>Converting…</div>`, "working");
       render(await chrome.runtime.sendMessage({ type: "convert", latex: edited }));
     });
   }
 
-  function showPanel(html) {
+  function open_(url) {
+    chrome.runtime.sendMessage({ type: "open", url });
+    hidePanel();
+  }
+
+  function showPanel(html, note = "", tone = "") {
     body.innerHTML = html;
+    status.textContent = note;
+    status.className = `status ${tone}`;
     panel.classList.add("on");
   }
 
