@@ -91,8 +91,8 @@
 
     .note { margin-top: 6px; font-size: 11.5px; color: var(--bad); }
 
-    /* Always here, usually empty: the technique arrives a beat after the
-       result and the panel should not jump when it does. */
+    /* Carries the offer from the start, so the row is occupied rather than
+       held open for something that has not arrived. */
     .hint { min-height: 17px; margin-top: 6px; font-size: 11.5px; color: var(--muted); }
     .hint button { font: inherit; padding: 0; border: 0; background: none;
                    color: var(--accent); cursor: pointer; text-decoration: underline;
@@ -484,22 +484,46 @@
     return button;
   }
 
-  async function offerHint(slot, latex) {
-    const reply = await chrome.runtime.sendMessage({ type: "hint", latex });
-    const found = reply?.hint;
-    if (!found || !slot.isConnected) return;
+  function thinking(slot, label) {
+    slot.innerHTML = `<span class="spinner"></span>${label}`;
+  }
+
+  // Both steps wait the same beat whether or not there is anything to wait for.
+  // Working out a technique takes anywhere from a twentieth of a second to two
+  // seconds depending on the denominator, and an interface that is sometimes
+  // instant and sometimes not reads as unreliable. A steady pace hides the
+  // difference.
+  function offerHint(slot, latex) {
+    const pending = chrome.runtime
+      .sendMessage({ type: "hint", latex })
+      .then((reply) => reply?.hint ?? null)
+      .catch(() => null);
 
     slot.append(
-      link("Hint?", () => {
-        slot.textContent = `Try ${found.technique}. `;
-        if (!found.detail) return;
-        const more = link("show me", () => {
-          const give = document.createElement("span");
-          give.className = "give";
-          give.textContent = found.detail;
-          more.replaceWith(give);
-        });
-        slot.append(more);
+      link("Hint?", async () => {
+        thinking(slot, "looking for a technique…");
+        const hint = await atLeast(pending);
+        if (!slot.isConnected) return;
+        if (!hint) {
+          slot.textContent = "Nothing to suggest for this one.";
+          return;
+        }
+
+        slot.textContent = `Try ${hint.technique}. `;
+        if (!hint.detail) return;
+
+        slot.append(
+          link("show me", async () => {
+            thinking(slot, "working it out…");
+            await atLeast(Promise.resolve());
+            if (!slot.isConnected) return;
+            slot.textContent = `Try ${hint.technique}. `;
+            const give = document.createElement("span");
+            give.className = "give";
+            give.textContent = hint.detail;
+            slot.append(give);
+          })
+        );
       })
     );
   }

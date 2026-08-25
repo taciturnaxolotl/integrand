@@ -81,7 +81,8 @@ ${block("  const COPY_ICON = icon(", ");")}
 ${block("  const DONE_ICON = icon(", ");")}
 ${block("  async function copyText(text) {")}
 ${block("  function link(label, onClick) {")}
-${block("  async function offerHint(slot, latex) {")}
+${block("  function thinking(slot, label) {")}
+${block("  function offerHint(slot, latex) {")}
 ${block("  const SYMBOLAB =", ";")}
 ${block("  const MATHML_TAGS =", "]);")}
 ${block("  const MATHML_ATTRS =", ");")}
