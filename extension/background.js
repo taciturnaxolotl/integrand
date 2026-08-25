@@ -9,15 +9,71 @@ async function endpoint() {
   return (endpoint || DEFAULT_ENDPOINT).replace(/\/+$/, "");
 }
 
-chrome.action.onClicked.addListener(async (tab) => {
-  if (!tab.url?.startsWith("http")) return; // activeTab grants nothing on chrome://
+//: Three ways in, all landing here: the toolbar button, the keyboard shortcut
+//: (which fires the same onClicked), and the right-click menu. Each is a user
+//: gesture, which is what grants activeTab on the page.
+async function startCrop(tab) {
+  if (!tab?.id || !tab.url?.startsWith("http")) return; // activeTab grants nothing on chrome://
   await chrome.scripting.executeScript({
     target: { tabId: tab.id },
     files: ["content/page-math.js", "content/overlay.js"],
   });
   // The script starts a crop on load; this covers the already-injected case.
   chrome.tabs.sendMessage(tab.id, { type: "start-crop" }).catch(() => {});
+}
+
+chrome.action.onClicked.addListener(startCrop);
+
+const SNIP_MENU = "integrand-snip";
+const KEEP_MENU = "integrand-keep";
+const ANCHOR_SCRIPT = "integrand-anchor";
+
+function installMenus() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({ id: SNIP_MENU, title: "Snip this maths problem", contexts: ["all"] });
+    chrome.contextMenus.create({ id: KEEP_MENU, title: "Show the integrand button on this site", contexts: ["all"] });
+  });
+}
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === SNIP_MENU) startCrop(tab);
+  if (info.menuItemId === KEEP_MENU && tab?.url?.startsWith("http")) {
+    chrome.tabs.create({
+      url: chrome.runtime.getURL(
+        `options.html?host=${encodeURIComponent(new URL(tab.url).host)}`
+      ),
+    });
+  }
 });
+
+//: The anchor only runs where its origin has been granted, so the registration
+//: is derived from the granted permissions rather than kept alongside them —
+//: revoking a site in Chrome's own UI takes the button with it.
+async function syncAnchorSites() {
+  const granted = await chrome.permissions.getAll();
+  const matches = (granted.origins ?? []).filter((o) => !/localhost|127\.0\.0\.1/.test(o));
+
+  const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [ANCHOR_SCRIPT] });
+  if (existing.length) await chrome.scripting.unregisterContentScripts({ ids: [ANCHOR_SCRIPT] });
+  if (!matches.length) return;
+
+  await chrome.scripting.registerContentScripts([{
+    id: ANCHOR_SCRIPT,
+    matches,
+    js: ["content/page-math.js", "content/anchor.js"],
+    runAt: "document_idle",
+  }]);
+}
+
+function boot() {
+  installMenus();
+  syncAnchorSites().catch(() => {});
+}
+
+chrome.runtime.onInstalled.addListener(boot);
+chrome.runtime.onStartup.addListener(boot);
+chrome.permissions.onAdded.addListener(() => syncAnchorSites().catch(() => {}));
+chrome.permissions.onRemoved.addListener(() => syncAnchorSites().catch(() => {}));
 
 async function post(path, payload) {
   try {
@@ -81,6 +137,16 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
 
   if (message.type === "open") {
     openResult(message.url).then(() => respond({ ok: true }));
+    return true;
+  }
+
+  if (message.type === "start-crop-here") {
+    startCrop(sender.tab).then(() => respond({ ok: true }));
+    return true;
+  }
+
+  if (message.type === "sync-anchor-sites") {
+    syncAnchorSites().then(() => respond({ ok: true }));
     return true;
   }
 });

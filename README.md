@@ -19,8 +19,22 @@ INTEGRAND_OCR=pix2tex uv run --group service --group ocr \
 ```
 
 Then load `extension/` unpacked: `chrome://extensions` → developer mode →
-**Load unpacked**. Click the toolbar icon, drag over a problem, check what it
-read, hit **Open calculator**.
+**Load unpacked**. Drag over a problem, check what it read, hit **Open
+calculator**.
+
+Four ways to start a snip:
+
+- the toolbar button
+- <kbd>⌘⇧Y</kbd> / <kbd>Ctrl+Shift+Y</kbd>
+- right-click → **Snip this maths problem**
+- the **∫** on the right edge, on sites you have opted into
+
+The last one is off by default. Right-click → **Show the integrand button on
+this site** grants that one origin, and even then the button only appears on
+pages where the reader actually finds maths — so a course's login page stays
+clean while its homework pages do not. Remove sites from the options page, or
+from Chrome's own permissions UI; the registration follows the grant either
+way.
 
 The extension only ever talks to the service, so swapping OCR backends does not
 touch it. Before it captures anything it asks the page whether it already knows

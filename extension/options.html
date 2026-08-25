@@ -2,25 +2,63 @@
 <meta charset="utf-8">
 <title>integrand options</title>
 <style>
-  body { font: 14px/1.6 ui-serif, Georgia, "Times New Roman", serif;
-         max-width: 34em; margin: 3em auto; padding: 0 1.5em; color: #1b1d1e; background: #fbf7ef; }
-  h1 { font-size: 1.3em; letter-spacing: .02em; }
-  label { display: block; margin: 1.5em 0 .4em; font-size: 11px;
-          letter-spacing: .06em; text-transform: uppercase; color: #7a6a53; }
-  input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #cfc4ae;
-          border-radius: 4px; font: 13px ui-monospace, SFMono-Regular, Menlo, monospace;
-          background: #fffdf8; }
-  button { margin-top: 1.2em; font: inherit; font-size: 13px; padding: 7px 16px;
-           border: 1px solid #1d4e63; border-radius: 4px; background: #2f7d95;
-           color: #fff; cursor: pointer; }
-  p { color: #5a5145; }
-  .saved { color: #3f6b34; margin-left: .8em; }
+  :root {
+    --paper: #fbf7ef; --ink: #1f2224; --muted: #7d6f52; --line: #ddd3c0;
+    --accent: #276a80; --accent-ink: #fff; --sunk: #f2ebde; --good: #3f6a29;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #191c1e; --ink: #f3eee4; --muted: #aba18e; --line: #414850;
+      --accent: #6cc0da; --accent-ink: #0c1518; --sunk: #0f1315; --good: #a8d48c;
+    }
+  }
+  body { font: 15px/1.65 ui-serif, Georgia, "Times New Roman", serif;
+         max-width: 36em; margin: 3em auto 5em; padding: 0 1.5em;
+         color: var(--ink); background: var(--paper); }
+  h1 { font-size: 1.35em; margin: 0 0 .2em; letter-spacing: .01em; }
+  h1 span { color: var(--muted); font-weight: normal; }
+  h2 { font-size: .78em; letter-spacing: .09em; text-transform: uppercase;
+       color: var(--muted); margin: 2.4em 0 .6em; font-weight: 600; }
+  p { color: var(--muted); margin: .5em 0; }
+  input { width: 100%; box-sizing: border-box; padding: 8px 10px;
+          border: 1px solid var(--line); border-radius: 4px; background: var(--sunk);
+          color: var(--ink); font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
+  button { font: inherit; font-size: 13px; padding: 7px 14px; border-radius: 4px;
+           border: 1px solid var(--accent); background: var(--accent);
+           color: var(--accent-ink); cursor: pointer; }
+  button.ghost { background: transparent; color: var(--accent); }
+  button.quiet { border-color: var(--line); background: transparent; color: var(--muted);
+                 padding: 4px 9px; font-size: 12px; }
+  .row { display: flex; gap: 10px; align-items: center; margin-top: .9em; }
+  .said { color: var(--good); font-size: 13px; }
+  ul { list-style: none; padding: 0; margin: .6em 0 0; }
+  li { display: flex; align-items: center; gap: 10px; padding: 7px 0;
+       border-bottom: 1px solid var(--line); }
+  li code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; flex: 1; }
+  li button { margin-left: auto; }
+  .empty { color: var(--muted); font-style: italic; }
+  kbd { font: 12px ui-monospace, Menlo, monospace; border: 1px solid var(--line);
+        border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px; background: var(--sunk); }
 </style>
-<h1>integrand</h1>
-<label for="endpoint">Service endpoint</label>
+
+<h1>integrand <span>options</span></h1>
+
+<h2>Service endpoint</h2>
 <input id="endpoint" spellcheck="false">
-<p>Point this at your own box to stop using someone else's compute. The
-manifest only grants access to localhost, so a remote endpoint needs a
-matching <code>host_permissions</code> entry.</p>
-<button id="save">Save</button><span class="saved" id="saved"></span>
+<p>Point this at your own box to stop using someone else's compute. The manifest
+grants access to localhost only, so a remote endpoint needs a matching
+<code>host_permissions</code> entry.</p>
+<div class="row"><button id="save">Save</button><span class="said" id="saved"></span></div>
+
+<h2>Sites with the button</h2>
+<p>On these sites a small <b>∫</b> sits on the right edge — but only on pages
+where it actually finds maths, so a login page stays clean. Everywhere else,
+snipping still works from the toolbar button, the right-click menu, or
+<kbd>⌘⇧Y</kbd>.</p>
+<div class="row" id="offer" hidden>
+  <button id="grant"></button>
+  <span class="said" id="granted"></span>
+</div>
+<ul id="sites"></ul>
+
 <script src="options.js"></script>
