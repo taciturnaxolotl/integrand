@@ -72,7 +72,13 @@ const panel = shadow.querySelector(".panel");
 const body = shadow.querySelector(".body");
 const status = shadow.querySelector(".status");
 const chrome = { runtime: { sendMessage: async () => ({}) } };
+${block("  const MINIMUM_WAIT =", ";")}
+${block("  function atLeast(work, ms = MINIMUM_WAIT) {")}
 ${block("  function escape(text) {")}
+${block("  const icon = (paths) =>", ";")}
+${block("  const COPY_ICON = icon(", ");")}
+${block("  const DONE_ICON = icon(", ");")}
+${block("  async function copyText(text) {")}
 ${block("  const SYMBOLAB =", ";")}
 ${block("  const MATHML_TAGS =", "]);")}
 ${block("  const MATHML_ATTRS =", ");")}

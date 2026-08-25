@@ -74,13 +74,17 @@
     .close:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px;
                            border-radius: 5px; }
 
-    /* The rendered expression is the thing you actually compare against the
-       page, so it gets the room and the raw LaTeX hides behind the pencil. */
+    /* The rendered expression is what you compare against the page, so it gets
+       the room. Clicking it is also the way to the raw LaTeX, which keeps the
+       source out of sight until something looks wrong. */
     .render { margin: 0 0 7px; padding: 9px 8px; text-align: center; font-size: 17px;
               color: var(--ink); background: var(--sunk); border: 1px solid var(--line);
-              border-radius: 4px; overflow-x: auto; }
+              border-radius: 4px; overflow-x: auto; cursor: text;
+              transition: border-color .12s ease; }
+    .render:hover { border-color: var(--muted); }
     .render math { color: inherit; }
     .edit { margin-bottom: 2px; }
+    .edit .row { margin-top: 6px; justify-content: flex-end; }
     .hidden { display: none; }
 
     textarea { display: block; width: 100%; box-sizing: border-box; height: 40px;
@@ -89,9 +93,6 @@
                background: var(--sunk); color: var(--ink); }
     textarea:focus { outline: 1px solid var(--accent); outline-offset: -1px; }
 
-    .infix { margin-top: 5px; font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
-             color: var(--muted); overflow: hidden; text-overflow: ellipsis;
-             white-space: nowrap; }
     .note { margin-top: 6px; font-size: 11.5px; color: var(--bad); }
 
     .row { display: flex; gap: 6px; align-items: center; margin-top: 9px; }
@@ -283,6 +284,16 @@
   // our own conversion refused the expression.
   const SYMBOLAB = "https://www.symbolab.com/solver/step-by-step/";
 
+  const icon = (paths) =>
+    `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          aria-hidden="true">${paths}</svg>`;
+  const COPY_ICON = icon(
+    `<rect x="8" y="8" width="14" height="14" rx="2"/>` +
+    `<path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>`
+  );
+  const DONE_ICON = icon(`<path d="M20 6 9 17l-5-5"/>`);
+
   // Everything sympy's presentation printer emits, and nothing else. The
   // MathML is ours but derived from OCR output, so it goes through an
   // allowlist rather than straight into innerHTML.
@@ -332,17 +343,18 @@
     // already say so, and a badge that is almost always lit only makes the
     // warnings easier to miss.
     showPanel(`
-      <div class="render hidden"></div>
+      <div class="render hidden" title="Click to edit the LaTeX"></div>
       <div class="edit${blocked ? "" : " hidden"}">
         <textarea class="latex" spellcheck="false">${escape(latex)}</textarea>
+        <div class="row"><button class="ghost reread">Re-read</button></div>
       </div>
-      ${blocked ? "" : `<div class="infix" title="${escape(result.infix)}">${escape(result.infix)}</div>`}
       ${failed ? `<div class="note">${escape(result.detail || result.error)}</div>` : ""}
       ${unverified ? `<div class="note">Round-trip check failed — this may not be the expression above.</div>` : ""}
       <div class="row">
         <button class="go" ${blocked ? "disabled" : ""}>${where} calc</button>
         <button class="ghost sym">Symbolab</button>
-        <button class="ghost icon pencil" title="Edit the LaTeX">&#9998;</button>
+        <button class="ghost icon copy" ${blocked ? "disabled" : ""}
+                title="Copy the expression">${COPY_ICON}</button>
       </div>
     `, failed ? "not converted" : unverified ? "unverified" : "", blocked ? "bad" : "");
 
@@ -355,22 +367,22 @@
       open_(`${SYMBOLAB}${encodeURIComponent(body.querySelector(".latex").value)}`);
     });
 
-    // One button, two jobs: reveal the source, then re-read it once edited.
-    const pencil = body.querySelector(".pencil");
-    const editor = body.querySelector(".edit");
-    const setMode = (editing) => {
-      editor.classList.toggle("hidden", !editing);
-      pencil.innerHTML = editing ? "&#8635;" : "&#9998;";
-      pencil.title = editing ? "Re-read the edited LaTeX" : "Edit the LaTeX";
-    };
-    setMode(blocked);
+    // What the site is actually sent. Showing it permanently was noise; it is
+    // still the thing worth having on the clipboard.
+    body.querySelector(".copy")?.addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      await copyText(result.infix);
+      button.innerHTML = DONE_ICON;
+      setTimeout(() => (button.innerHTML = COPY_ICON), 1400);
+    });
 
-    pencil.addEventListener("click", async () => {
-      if (editor.classList.contains("hidden")) {
-        setMode(true);
-        body.querySelector(".latex").focus();
-        return;
-      }
+    const editor = body.querySelector(".edit");
+    rendered.addEventListener("click", () => {
+      editor.classList.remove("hidden");
+      body.querySelector(".latex").focus();
+    });
+
+    body.querySelector(".reread").addEventListener("click", async () => {
       const edited = body.querySelector(".latex").value;
       showPanel(`<div class="waiting"><span class="spinner"></span>Converting…</div>`, "working");
       render(await atLeast(chrome.runtime.sendMessage({ type: "convert", latex: edited })));
@@ -381,6 +393,23 @@
   // button, or the next capture take it down.
   function open_(url) {
     chrome.runtime.sendMessage({ type: "open", url });
+  }
+
+  // The clipboard API needs a focused document; a page that steals focus back
+  // would leave the copy silently doing nothing, so fall back to a selection.
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      const carrier = document.createElement("textarea");
+      carrier.value = text;
+      carrier.style.cssText = "position:fixed;top:-9999px;opacity:0";
+      document.body.append(carrier);
+      carrier.select();
+      document.execCommand("copy");
+      carrier.remove();
+    }
   }
 
   function parseColor(value) {
