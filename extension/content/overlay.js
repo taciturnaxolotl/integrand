@@ -52,9 +52,12 @@
     .status { margin-left: auto; font-size: 11px; letter-spacing: .05em;
               color: var(--muted); }
     .status.bad { color: var(--bad); }
-    .close { align-self: center; border: 0; background: none; color: var(--muted);
-             font: 15px/1 ui-serif, Georgia, serif; padding: 0 1px; cursor: pointer; }
-    .close:hover { color: var(--ink); }
+    .close { align-self: center; display: inline-flex; align-items: center;
+             justify-content: center; width: 22px; height: 22px; padding: 0;
+             border: 0; border-radius: 50%; background: none; color: var(--muted);
+             cursor: pointer; transition: color .12s ease, background .12s ease; }
+    .close:hover { color: var(--ink); background: var(--sunk); }
+    .close:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
 
     /* The rendered expression is the thing you actually compare against the
        page, so it gets the room and the raw LaTeX hides behind the pencil. */
@@ -102,7 +105,12 @@
       <div class="head">
         <span class="mark">∫&nbsp;<b>integrand</b></span>
         <span class="status"></span>
-        <button class="close" title="Close (Esc)">&times;</button>
+        <button class="close" title="Close (Esc)" aria-label="Close">
+          <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true">
+            <path d="M3 3 9 9 M9 3 3 9" fill="none" stroke="currentColor"
+                  stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
       </div>
       <div class="body"></div>
     </div>
@@ -209,8 +217,7 @@
       left: rect.x, top: rect.y, right: rect.x + rect.w, bottom: rect.y + rect.h,
     });
     if (known) {
-      const converted = await chrome.runtime.sendMessage({ type: "convert", latex: known.latex });
-      return render(converted, known.how);
+      return render(await chrome.runtime.sendMessage({ type: "convert", latex: known.latex }));
     }
 
     // The overlay must be off-screen *and painted* before the capture, or it
@@ -291,7 +298,7 @@
   // four is misread in a way that still converts and still verifies — a
   // misread variable is a valid expression, just not the one on screen — so
   // the only real check is a human glancing at it.
-  function render(result, source) {
+  function render(result) {
     if (!result || result.error === "network") {
       return showPanel(`<div class="note">No answer from the service. Is it running?</div>`, "offline");
     }
@@ -303,9 +310,8 @@
     const where = result.kind === "derivative" ? "Derivative" : "Integral";
 
     // Silent when it worked: the rendered expression and the live buttons
-    // already say so, and a permanent "verified" would only make the warnings
-    // easier to miss. Naming the typesetter is the exception — it says the
-    // LaTeX was read rather than guessed, and which reader got it.
+    // already say so, and a badge that is almost always lit only makes the
+    // warnings easier to miss.
     showPanel(`
       <div class="render hidden"></div>
       <div class="edit${blocked ? "" : " hidden"}">
@@ -319,8 +325,7 @@
         <button class="ghost sym">Symbolab</button>
         <button class="ghost icon pencil" title="Edit the LaTeX">&#9998;</button>
       </div>
-    `, failed ? "not converted" : unverified ? "unverified" : (source ?? ""),
-       blocked ? "bad" : "");
+    `, failed ? "not converted" : unverified ? "unverified" : "", blocked ? "bad" : "");
 
     const rendered = body.querySelector(".render");
     if (result.mathml && mountMath(rendered, result.mathml)) rendered.classList.remove("hidden");
