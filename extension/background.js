@@ -9,9 +9,8 @@ async function endpoint() {
   return (endpoint || DEFAULT_ENDPOINT).replace(/\/+$/, "");
 }
 
-//: Three ways in, all landing here: the toolbar button, the keyboard shortcut
-//: (which fires the same onClicked), and the right-click menu. Each is a user
-//: gesture, which is what grants activeTab on the page.
+// Every entry point lands here. Each is a user gesture, which is what grants
+// activeTab on the page.
 async function startCrop(tab) {
   if (!tab?.id || !tab.url?.startsWith("http")) return; // activeTab grants nothing on chrome://
   await chrome.scripting.executeScript({
@@ -28,10 +27,6 @@ const SNIP_MENU = "integrand-snip";
 const KEEP_MENU = "integrand-keep";
 const ANCHOR_SCRIPT = "integrand-anchor";
 
-//: Snipping belongs on the page, where you are pointing at a problem.
-//: Adding a site is settings, so it hangs off the toolbar icon instead —
-//: right-clicking the icon is where you look for what an extension can do,
-//: and it keeps the page menu to the one thing you actually want there.
 function installMenus() {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({ id: SNIP_MENU, title: "Snip this maths problem", contexts: ["page", "selection", "image"] });
@@ -39,10 +34,9 @@ function installMenus() {
   });
 }
 
-//: The host travels in session storage rather than the URL so that
-//: openOptionsPage can be used — it already focuses an existing options tab
-//: instead of piling up new ones, and querying tabs by URL would mean asking
-//: for the "tabs" permission just to find our own page.
+// The host travels in session storage so openOptionsPage can be used: it
+// focuses an existing tab, and finding our own page by URL would mean asking
+// for the "tabs" permission.
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === SNIP_MENU) startCrop(tab);
   if (info.menuItemId === KEEP_MENU) {
@@ -51,10 +45,10 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
-//: The registration is derived from the granted permissions rather than kept
-//: alongside them, so revoking a site in Chrome's own UI takes the button with
-//: it. The bundled homework sites are required permissions and cannot be
-//: revoked that way, so `offSites` is what turns those off.
+// Derived from the granted permissions rather than tracked alongside them, so
+// revoking a site in Chrome's own UI takes the button with it. The bundled
+// sites are required permissions and cannot be revoked there; `offSites` is
+// what turns those off.
 async function syncAnchorSites() {
   const granted = await chrome.permissions.getAll();
   const { offSites = [] } = await chrome.storage.local.get("offSites");
@@ -104,8 +98,8 @@ async function post(path, payload) {
 // than a counter: the worker is killed between snips and a counter would
 // restart at 1 and stop busting anything.
 //
-// Built with the URL API rather than string surgery because Symbolab's link
-// carries a query and no fragment, and the calculators carry the reverse.
+// The URL API rather than string surgery: Symbolab's link has a query and no
+// fragment, the calculators the reverse.
 async function openResult(url) {
   const target = new URL(url);
   target.searchParams.set("_", Date.now());

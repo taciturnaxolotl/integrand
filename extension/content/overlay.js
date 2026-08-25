@@ -129,9 +129,9 @@
   let box = { x1: 0, y1: 0, x2: 0, y2: 0 };
   let dragging = false;
 
-  //: The drag runs in any direction, so the live rect is the ordered box.
-  //: Without this a leftward drag computes a negative width, the CSS parser
-  //: throws the declaration away, and the overlay freezes mid-drag.
+  // The drag runs in any direction, so the live rect is the ordered box.
+  // Without this a leftward drag computes a negative width, the CSS parser
+  // throws the declaration away, and the overlay freezes mid-drag.
   function bounds() {
     return {
       x1: Math.min(box.x1, box.x2), x2: Math.max(box.x1, box.x2),
@@ -203,9 +203,8 @@
   async function submit(rect) {
     showPanel(`<div class="waiting"><span class="spinner"></span>Reading…</div>`, "working");
 
-    // Ask the page first. Where it knows its own maths — KaTeX, MathJax,
-    // MathML, Wikipedia alt text, WebAssign's watex — the answer is exact and
-    // costs nothing, and OCR only has to cover what is genuinely just pixels.
+    // Ask the page first: where it knows its own maths the answer is exact,
+    // and OCR is left with what is genuinely just pixels.
     const known = globalThis.integrandPageMath?.latexUnder({
       left: rect.x, top: rect.y, right: rect.x + rect.w, bottom: rect.y + rect.h,
     });
@@ -254,13 +253,13 @@
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   }
 
-  //: Symbolab takes the LaTeX straight in the path, so that button works even
-  //: when our own conversion refused the expression. It is the escape hatch.
+  // Symbolab takes the LaTeX straight in its path, so this still works when
+  // our own conversion refused the expression.
   const SYMBOLAB = "https://www.symbolab.com/solver/step-by-step/";
 
-  //: Everything sympy's presentation printer emits, and nothing else. The
-  //: MathML is ours, but it is derived from OCR output, so it goes through an
-  //: allowlist rather than straight into innerHTML.
+  // Everything sympy's presentation printer emits, and nothing else. The
+  // MathML is ours but derived from OCR output, so it goes through an
+  // allowlist rather than straight into innerHTML.
   const MATHML_TAGS = new Set([
     "math", "mrow", "mi", "mn", "mo", "ms", "mtext", "mspace", "mstyle", "mpadded",
     "msup", "msub", "msubsup", "munder", "mover", "munderover",
@@ -303,11 +302,9 @@
     const blocked = failed || unverified;
     const where = result.kind === "derivative" ? "Derivative" : "Integral";
 
-    // The status stays silent when it worked. The rendered expression already
-    // says what was read and the live buttons already say it is usable, so a
-    // permanent "verified" is chrome that makes the warnings harder to notice.
-    // "from page" is the exception: read off the page rather than guessed at,
-    // so it genuinely needs no second look.
+    // Silent when it worked: the rendered expression and the live buttons
+    // already say so, and a permanent "verified" would only make the warnings
+    // easier to miss. "from page" is the exception — read, not guessed.
     showPanel(`
       <div class="render hidden"></div>
       <div class="edit${blocked ? "" : " hidden"}">
@@ -355,9 +352,8 @@
     });
   }
 
-  //: The panel stays put after opening a calculator — you often want the other
-  //: button too, or a second look at what it read. Only Escape, the close
-  //: button, or the next capture take it down.
+  // The panel stays put after opening a calculator. Only Escape, the close
+  // button, or the next capture take it down.
   function open_(url) {
     chrome.runtime.sendMessage({ type: "open", url });
   }
@@ -377,13 +373,11 @@
     return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
   }
 
-  //: Match the page, not the OS. A cream card is glaring on a dark page even
-  //: when the browser is in light mode, and the reverse is worse. Probe what
-  //: is actually behind the panel's own corner, then fall back outward: most
-  //: pages leave <body> transparent and paint on <html>, or neither.
-  //:
-  //: 0.2 is the relative luminance of a mid grey, so anything darker than
-  //: that gets the dark panel.
+  // Match the page, not the OS: a cream card is glaring on a dark page even
+  // in light mode. Probe behind the panel's own corner, then fall back
+  // outward, since most pages leave <body> transparent and paint on <html>.
+  //
+  // 0.2 is the relative luminance of a mid grey.
   function pageIsDark() {
     const corner = document.elementsFromPoint(innerWidth - 40, innerHeight - 40);
     for (const element of [...corner, document.body, document.documentElement]) {

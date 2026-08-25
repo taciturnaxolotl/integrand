@@ -1,18 +1,15 @@
 // A small button on the right edge of pages you have opted into.
 //
-// It earns its place rather than being listed: it appears only once the page
-// reader finds maths on the page, so enabling a site does not mean a button on
-// every page of that site. Homework pages get it, the login page does not.
-//
-// Everything else — the toolbar button, the keyboard shortcut, the right-click
-// menu — works without any of this, on any page, with no stored permission.
+// It appears only once the page reader finds maths, so turning on a site does
+// not mean a button on every page of it: homework pages get one, login pages
+// do not.
 
 (() => {
   const HOST_ID = "integrand-anchor-host";
   if (document.getElementById(HOST_ID)) return;
 
-  //: Pages fill maths in late: MathJax typesets after load, WebAssign draws
-  //: questions from script. Look a few times before giving up.
+  // Pages fill maths in late: MathJax typesets after load, WebAssign draws
+  // questions from script. Look a few times before giving up.
   const ATTEMPTS = [400, 1200, 3000, 6000];
 
   const CSS = `

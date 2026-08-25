@@ -1,7 +1,7 @@
 const DEFAULT_ENDPOINT = "http://localhost:8765";
 
-//: Where the LaTeX comes from on each bundled site. The page reader handles
-//: all of these directly, which is why they ship switched on.
+// Where the LaTeX comes from on each bundled site. The page reader handles
+// all of them directly, which is why they ship switched on.
 const SOURCE = {
   "*://*.webassign.net/*": "watex",
   "*://*.myopenmath.com/*": "MathJax",
@@ -14,8 +14,8 @@ const SOURCE = {
   "*://openstax.org/*": "MathML",
 };
 
-//: The manifest's own localhost grants land in permissions.getAll() too; they
-//: are the service, not a site the button belongs on.
+// The manifest's own localhost grants land in permissions.getAll() too; they
+// are the service, not a site the button belongs on.
 const isSite = (origin) => !/localhost|127\.0\.0\.1/.test(origin);
 const label = (origin) => origin.replace(/^\*:\/\//, "").replace(/\/\*$/, "");
 const patternFor = (host) => `*://${host}/*`;
@@ -84,9 +84,8 @@ async function paint() {
   for (const origin of origins) list.append(siteRow(origin, !off.includes(origin)));
 }
 
-//: Asking for a host permission needs an extension page and a real click. A
-//: content script has neither, which is why the icon menu hands the host over
-//: rather than requesting it where you were standing.
+// Asking for a host permission needs an extension page and a real click, and
+// a content script has neither — hence the hand-off from the icon menu.
 async function offerHostFromMenu() {
   const { pendingHost: host } = await chrome.storage.session.get("pendingHost");
   await chrome.storage.session.remove("pendingHost");
@@ -114,10 +113,9 @@ async function offerHostFromMenu() {
   });
 }
 
-//: Repaint from the event, not from the request resolving. The promise settles
-//: before Chrome has committed the grant, so painting there left a stale list
-//: until reload. Listening also catches changes made in Chrome's own
-//: permissions UI while this page is open.
+// Repaint from the event, not from the request resolving: the promise settles
+// before Chrome commits the grant, so painting there left a stale list until
+// reload. This also catches changes made in Chrome's own permissions UI.
 function repaintOnPermissionChange() {
   chrome.runtime.sendMessage({ type: "sync-anchor-sites" }).catch(() => {}).finally(paint);
 }

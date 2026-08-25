@@ -1,7 +1,6 @@
-// Read the maths the page already knows, so OCR is a fallback rather than the
-// only route. Where this works the result is exact, instant, and free.
+// Read the maths the page already knows, so OCR is only a fallback.
 //
-// Three sources, in order of how much work they take:
+// Four sources, in order of how much work they take:
 //
 //   1. KaTeX / MathJax v3 / MathML — the LaTeX is right there in an
 //      <annotation encoding="application/x-tex">.
@@ -17,9 +16,8 @@
 globalThis.integrandPageMath = (() => {
   const MIN_COVERAGE = 0.5;
 
-  //: Bare `sin` would be read as s·i·n. watex draws function names as plain
-  //: text, so they need their backslashes putting back. Longest first, or
-  //: `sin` eats the tail of `arcsin`.
+  // Bare `sin` parses as s·i·n. watex draws function names as plain text, so
+  // the backslashes go back on. Longest first, or `sin` eats `arcsin`.
   const FUNCTIONS = [
     "arcsinh", "arccosh", "arctanh", "arcsin", "arccos", "arctan",
     "arccot", "arcsec", "arccsc", "arsinh", "arcosh", "artanh",
@@ -32,8 +30,8 @@ globalThis.integrandPageMath = (() => {
     return (element.className || "").toString().split(/\s+/).filter(Boolean);
   }
 
-  //: Shallowest match wins, and the search does not leave the subtree, so a
-  //: nested fraction inside a numerator cannot be mistaken for the numerator.
+  // Shallowest match wins, and the search does not leave the subtree, so a
+  // nested fraction inside a numerator cannot be mistaken for the numerator.
   function part(root, wanted) {
     const queue = [...root.children];
     while (queue.length) {

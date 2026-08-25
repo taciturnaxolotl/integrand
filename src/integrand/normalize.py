@@ -17,8 +17,7 @@ _OPERATORS = (
 
 #: Some models emit one space between every token — `\frac { d } { d x }`.
 #: Whitespace touching a brace never carries meaning, and every structural rule
-#: below matches on tight braces, so this runs first and lets the rest stay
-#: readable instead of sprouting \s* everywhere.
+#: below matches on tight braces, so this runs first.
 _LOOSE_BRACES = re.compile(r"\s*([{}])\s*")
 
 _SUBSTITUTIONS: list[tuple[str, str]] = [
@@ -74,9 +73,9 @@ _GLUED_DIFFERENTIAL = re.compile(r"(?<=[a-zA-Z0-9})])d([a-zA-Z])\s*$")
 
 #: `\sec 3t (…)` — a trig function written without parentheses. sympy hands the
 #: whole following product to the function, so `\sec 3t(\sec 3t + \tan 3t)`
-#: becomes sec of everything. Bracing the minimal argument restores the reading
-#: every textbook intends. An exponent on the function itself (`\ln^2(x)`) does
-#: not match, because `^` follows the command directly.
+#: becomes sec of everything. Bracing the minimal argument restores the
+#: intended reading. An exponent on the function itself (`\ln^2(x)`) does not
+#: match, because `^` follows the command directly.
 _BARE_ARGUMENT = re.compile(
     r"\\(sin|cos|tan|sec|csc|cot|sinh|cosh|tanh|sech|csch|coth|ln|log|exp)"
     r"\s+(\d*\s*(?:[a-zA-Z]|\\[a-zA-Z]+)(?:\^(?:\{[^{}]*\}|\w))?)"
@@ -101,7 +100,7 @@ _IMPLICIT_CALL = re.compile(r"(?<![\\a-zA-Z])([a-zA-Z])\s*\(")
 
 
 def _make_products_explicit(latex: str) -> str:
-    """Turn `x(x-8)` into `x \cdot (x-8)` before sympy can read it as a call.
+    r"""Turn `x(x-8)` into `x \cdot (x-8)` before sympy can read it as a call.
 
     LaTeX writes multiplication and function application identically and sympy
     guesses "call", so `x(x-8)` arrives as an undefined function. Fixing it
@@ -110,7 +109,7 @@ def _make_products_explicit(latex: str) -> str:
 
     Only letters that appear more than once are touched. A lone `f` in
     `\int f(x) dx` really may be a function, and turning that into `f \cdot x`
-    would answer a different question convincingly.
+    would answer a different question.
     """
 
     def replace(match: re.Match) -> str:
@@ -136,7 +135,7 @@ def _brackets_to_parens(latex: str) -> str:
 
 
 def _strip_wrapping_braces(latex: str) -> str:
-    """Drop a brace pair that wraps the whole expression: `{\frac{d}{dx}}(x)`."""
+    r"""Drop a brace pair that wraps the whole expression: `{\frac{d}{dx}}(x)`."""
     while latex.startswith("{") and latex.endswith("}"):
         depth = 0
         for index, char in enumerate(latex):

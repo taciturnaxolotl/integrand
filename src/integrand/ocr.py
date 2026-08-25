@@ -1,8 +1,7 @@
-"""OCR backends. One in-process model, one over the network.
+"""OCR backends: two local models and one over the network.
 
-Swapping these is the whole point of the seam: the extension only ever talks to
-this service, so replacing Symbolab with pix2tex is a config change rather than
-an extension rewrite.
+The extension only ever talks to the service, so changing model is a config
+change rather than an extension rewrite.
 """
 
 from __future__ import annotations
@@ -31,9 +30,10 @@ def symbolab(image: bytes) -> str:
 
 
 def pix2tex() -> Backend:
-    """Load the model once, at startup, so the first request is not the slow one.
+    """Loaded once at startup, so the first request is not the slow one.
 
-    CPU on purpose: MPS measured 2.4x slower on this decoder. See BENCHMARKS.md.
+    CPU on purpose: MPS measured 2.4x slower on this decoder, and UniMERNet is
+    more accurate than either. See BENCHMARKS.md.
     """
     from munch import Munch
     from PIL import Image

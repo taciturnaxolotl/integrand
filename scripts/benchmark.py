@@ -5,8 +5,9 @@ infix string? A backend that returns cosmetically different LaTeX but converts
 to the same expression has not made a mistake, and edit distance on LaTeX would
 say otherwise.
 
-Backends are pluggable so the pix2tex CPU/MPS/CoreML comparison in milestone 2
-drops straight in beside the reference numbers.
+Backends are pluggable, so a new model drops in beside the recorded numbers.
+Some cannot share a process with the converter; scripts/dump-ocr.py covers
+those.
 
     uv run python scripts/render_corpus.py corpus
     uv run python scripts/benchmark.py corpus --backend symbolab --limit 15
@@ -38,12 +39,12 @@ def symbolab_backend(image: Path) -> str:
 
 
 def make_pix2tex(device: str):
-    """The one we actually intend to ship.
+    """pix2tex, with the device moved after construction.
 
-    pix2tex hardcodes cuda-or-cpu and has no MPS path, so the device is moved
-    after construction. Whether that move is a win is the whole question: the
-    ViT encoder likes a GPU, but the decoder is autoregressive over ~50-150
-    tokens and per-kernel launch overhead can swamp a model this small.
+    It hardcodes cuda-or-cpu with no MPS path. Whether moving it is a win is
+    the whole question: the ViT encoder likes a GPU, but the decoder is
+    autoregressive over ~50-150 tokens and kernel launch overhead can swamp a
+    model this small. It does not — see BENCHMARKS.md.
     """
     from munch import Munch
     from PIL import Image
