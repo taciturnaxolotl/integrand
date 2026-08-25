@@ -75,6 +75,14 @@ OCR_SHAPES = [
     ("\\frac{∂}{∂y}(xy^{2})", "x*y^(2)", "y"),
     ("∫ x^{2}dx", "x^(2)", "x"),
     ("∫ 2πrdr", "2*pi*r", "r"),
+    # pix2tex wraps the operator in a redundant brace group and spaces `d x`
+    (r"{\frac{d}{d x}}(x^{2})", "x^(2)", "x"),
+    (r"\int{\frac{2x^{2}+7x-1}{x-4}}d x", "((2*x^(2) + 7*x) - 1)/(x - 4)", "x"),
+    # and writes operator names as upright text rather than commands
+    (r"\int\mathrm{arctan}(x)d x", "arctan(x)", "x"),
+    (r"\int\operatorname{ln}(x)dx", "ln(x)", "x"),
+    # a decorated single letter is still a variable
+    (r"\int\cos^{3}\!\left(\mathcal{A}\right)d\mathcal{A}", "(cos(A))^(3)", "A"),
     # glued products are genuine products, not dropped backslashes
     (r"\int xy\,dx", "x*y", "x"),
 ]
