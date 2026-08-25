@@ -292,6 +292,9 @@
     const blocked = failed || unverified;
     const where = result.kind === "derivative" ? "Derivative" : "Integral";
 
+    // The status stays silent when it worked. The rendered expression already
+    // says what was read and the live buttons already say it is usable, so a
+    // permanent "verified" is chrome that makes the warnings harder to notice.
     showPanel(`
       <div class="render hidden"></div>
       <div class="edit${blocked ? "" : " hidden"}">
@@ -305,9 +308,6 @@
         <button class="ghost sym">Symbolab</button>
         <button class="ghost icon pencil" title="Edit the LaTeX">&#9998;</button>
       </div>
-    // Silent when it worked. The rendered expression already says what was read
-    // and the live buttons already say it is usable, so a permanent "verified"
-    // is chrome that mostly makes the warnings harder to notice.
     `, failed ? "not converted" : unverified ? "unverified" : "", blocked ? "bad" : "");
 
     const rendered = body.querySelector(".render");
