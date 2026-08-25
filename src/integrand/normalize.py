@@ -41,8 +41,12 @@ _SUBSTITUTIONS: list[tuple[str, str]] = [
     # everything else, and sympy needs `dx` welded to see a derivative. Only
     # `d` welds: `\partial y` must keep its space or the command runs on.
     (r"\{d\s+([a-zA-Z])\}", r"{d\1}"),
-    # and they wrap the operator in a redundant brace group
+    # and they wrap the operator in a redundant brace group. This has to come
+    # after the styling strips: `{\displaystyle\int}` is only `{\int}` by then.
     (r"\{(\\frac\{(?:d|\\partial)\}\{[^{}]*\})\}", r"\1"),
+    # the trailing space matters: brace tightening has already removed the one
+    # that separated the command from what follows, and `\int` + `x` is `\intx`
+    (r"\{\s*(\\(?:iiint|iint|int|oint|sum|prod))\s*\}", r"\1 "),
     (r"\{\\rm\s+([^{}]*)\}", r"\1"),
     (r"\\(?:text|mathrm|mathit)\{([^{}]*)\}", r"\1"),
 ]
@@ -170,8 +174,13 @@ def _strip_wrapping_braces(latex: str) -> str:
     return latex
 
 
+#: A step lifted out of a worked derivation carries the equals sign that joined
+#: it to the line above. There is nothing on the left of it to be equal to.
+_LEADING_RELATION = re.compile(r"^\s*[=<>]\s*")
+
+
 def normalize(latex: str) -> str:
-    out = latex.strip()
+    out = _LEADING_RELATION.sub("", latex.strip())
     for bad, good in _UNICODE.items():
         out = out.replace(bad, good)
     out = _LOOSE_BRACES.sub(r"\1", out)

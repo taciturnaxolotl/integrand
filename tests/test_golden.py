@@ -109,6 +109,11 @@ OCR_SHAPES = [
     ("\\int (9 \u2212 \\tan(\\frac{\u03b8}{2})) d\u03b8", "9 - tan((theta)/(2))", "theta"),
     ("\\int \\frac{\\sqrt[3]{x}}{\\sqrt[3]{x} \u2212 1} dx",
      "(root(3, x))/(root(3, x) - 1)", "x"),
+    # a step lifted out of a worked derivation, equals sign and all
+    (r"= {\displaystyle\int} \left(2u + \dfrac{59}{u} + 23\right) \mathrm{d}u",
+     "(2*u + (59)/(u)) + 23", "u"),
+    (r"= \int x^2 dx", "x^(2)", "x"),
+    (r"{\displaystyle\int} x\,dx", "x", "x"),
     # glued products are genuine products, not dropped backslashes
     (r"\int xy\,dx", "x*y", "x"),
 ]
@@ -207,6 +212,16 @@ def test_rejected(latex, code):
     with pytest.raises(ConvertError) as excinfo:
         convert(latex)
     assert excinfo.value.code == code
+
+
+def test_parse_failures_are_one_readable_line():
+    """No caret diagram: the panel is 316 pixels wide."""
+    with pytest.raises(ConvertError) as excinfo:
+        convert(r"\begin{matrix} a & b \\ c & d \end{matrix}")
+    detail = excinfo.value.detail
+    assert "\n" not in detail
+    assert "~" not in detail
+    assert detail.startswith("could not read the maths near")
 
 
 def test_routing():

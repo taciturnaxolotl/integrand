@@ -79,11 +79,27 @@ def _reject_implicit_words(latex: str) -> None:
             )
 
 
+def _parse_failure(exc: Exception) -> str:
+    """One readable line out of sympy's three-line caret diagram.
+
+    It reports failures as a description, the input, and a row of tildes under
+    the offending column. That is fine in a terminal and unreadable in a panel
+    316 pixels wide, so keep the position and drop the drawing.
+    """
+    lines = str(exc).splitlines()
+    if len(lines) >= 3 and set(lines[-1]) <= set("~^ ") and "^" in lines[-1]:
+        column = lines[-1].index("^")
+        source = lines[-2]
+        fragment = source[max(0, column - 10) : column + 10].strip()
+        return f"could not read the maths near “{fragment}”"
+    return "could not read this as maths"
+
+
 def _parse(latex: str):
     try:
         expr = parse_latex(latex)
     except Exception as exc:  # sympy raises several unrelated types here
-        raise ConvertError("convert_failed", f"parse error: {exc}".strip()) from exc
+        raise ConvertError("convert_failed", _parse_failure(exc)) from exc
     # parse_latex hands back plain symbols for the constants in some
     # positions and the real thing in others (`\pi` is a Symbol next to an
     # implicit product, but sympy's pi inside a bound). Canonicalise both so
