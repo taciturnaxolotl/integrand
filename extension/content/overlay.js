@@ -11,6 +11,17 @@
   const HOST_ID = "integrand-overlay-host";
   if (document.getElementById(HOST_ID)) return; // injected on every click
 
+  // Reading the page's own maths takes about as long as a round trip to
+  // localhost, so the spinner would appear and vanish inside a frame or two.
+  // Holding the wait to a floor makes the change of state legible. It does not
+  // invent progress — the work is done, we are just not flickering at people.
+  const MINIMUM_WAIT = 350;
+
+  function atLeast(work, ms = MINIMUM_WAIT) {
+    const rested = new Promise((done) => setTimeout(done, ms));
+    return Promise.all([work, rested]).then(([value]) => value);
+  }
+
   const CSS = `
     :host { all: initial; }
 
@@ -44,7 +55,8 @@
              box-shadow: 0 6px 22px rgba(0,0,0,.22);
              font: 12px/1.45 ui-serif, Georgia, "Times New Roman", serif;
              padding: 9px 11px 10px; }
-    .panel.on { display: block; }
+    .panel.on { display: block; animation: rise .16s ease-out; }
+    @keyframes rise { from { opacity: 0; transform: translateY(4px); } }
 
     .head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 7px; }
     .mark { font-size: 13px; color: var(--muted); letter-spacing: .03em; }
@@ -222,7 +234,9 @@
       left: rect.x, top: rect.y, right: rect.x + rect.w, bottom: rect.y + rect.h,
     });
     if (known) {
-      return render(await chrome.runtime.sendMessage({ type: "convert", latex: known.latex }));
+      return render(
+        await atLeast(chrome.runtime.sendMessage({ type: "convert", latex: known.latex }))
+      );
     }
 
     // The overlay must be off-screen *and painted* before the capture, or it
@@ -359,7 +373,7 @@
       }
       const edited = body.querySelector(".latex").value;
       showPanel(`<div class="waiting"><span class="spinner"></span>Converting…</div>`, "working");
-      render(await chrome.runtime.sendMessage({ type: "convert", latex: edited }));
+      render(await atLeast(chrome.runtime.sendMessage({ type: "convert", latex: edited })));
     });
   }
 
