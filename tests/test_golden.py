@@ -61,6 +61,24 @@ GOLDEN = [
     (r"\frac{d}{dx}\left(x\sin(x)\right)", "x*sin(x)"),
 ]
 
+#: Shapes that only turn up once a real OCR model is in the loop. Kept out of
+#: GOLDEN because render_corpus.py compiles that table with LaTeX, and these are
+#: outputs rather than inputs.
+OCR_SHAPES = [
+    # OCR drops the space a human types before the differential
+    (r"\int xdx", "x", "x"),
+    (r"\int 5xdx", "5*x", "x"),
+    (r"\int 2\pi rdr", "2*pi*r", "r"),
+    (r"\int \sin(x)dx", "sin(x)", "x"),
+    (r"\int \frac{2x^{2}+7x-1}{x-4}dx", "((2*x^(2) + 7*x) - 1)/(x - 4)", "x"),
+    # and returns the real glyph where a human types the command
+    ("\\frac{∂}{∂y}(xy^{2})", "x*y^(2)", "y"),
+    ("∫ x^{2}dx", "x^(2)", "x"),
+    ("∫ 2πrdr", "2*pi*r", "r"),
+    # glued products are genuine products, not dropped backslashes
+    (r"\int xy\,dx", "x*y", "x"),
+]
+
 UNSUPPORTED = [
     (r"\oint x dx", "unsupported_operator"),
     (r"\int\int x dy dx", "unsupported_operator"),
@@ -76,6 +94,15 @@ def test_golden(latex, expected):
     result = convert(latex)
     assert result.infix == expected
     assert result.verified, "round-trip check failed"
+
+
+@pytest.mark.parametrize("latex,expected,var", OCR_SHAPES, ids=[c[0] for c in OCR_SHAPES])
+def test_ocr_shapes(latex, expected, var):
+    """Regressions from running the corpus through a real OCR model."""
+    result = convert(latex)
+    assert result.infix == expected
+    assert result.var == var
+    assert result.verified
 
 
 @pytest.mark.parametrize("latex,code", UNSUPPORTED, ids=[c[0] for c in UNSUPPORTED])

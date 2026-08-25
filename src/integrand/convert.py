@@ -12,12 +12,13 @@ from dataclasses import asdict, dataclass
 from urllib.parse import quote
 
 from sympy import (
-    Abs, Derivative, E, Integral, Pow, Rational, Symbol, sqrt, log, pi, simplify,
+    Abs, Derivative, E, Integral, Pow, Rational, Symbol, sqrt, log, pi,
 )
 from sympy import functions as sympy_functions
 from sympy.parsing.latex import parse_latex
 from sympy.parsing.sympy_parser import parse_expr
 
+from .equivalence import agree
 from .normalize import normalize
 from .printer import FUNCTIONS, UnsupportedFunction, to_infix
 
@@ -26,7 +27,14 @@ DERIVATIVE_URL = "https://www.derivative-calculator.net/#"
 
 _LATEX_COMMAND = re.compile(r"\\[a-zA-Z]+")
 _WORD = re.compile(r"[A-Za-z]{2,}")
-_DIFFERENTIAL = re.compile(r"^d[a-zA-Z]$")
+
+#: Names sympy would shred into a product of single letters. Bare `xy` is fine
+#: (it really is x times y), but a bare `abs` or `sin` means OCR dropped a
+#: backslash and the parse would be quietly wrong.
+_FUNCTION_WORDS = frozenset(FUNCTIONS) | frozenset(FUNCTIONS.values()) | {
+    "abs", "ln", "log", "exp", "sqrt", "root", "lim", "min", "max", "det",
+    "arcsinh", "arccosh", "arctanh", "mod", "deg", "gcd", "lcm",
+}
 
 
 class ConvertError(Exception):
@@ -51,16 +59,18 @@ class Result:
 
 
 def _reject_implicit_words(latex: str) -> None:
-    """Catch multi-letter names sympy would shred into implicit products.
+    """Catch function names sympy would shred into implicit products.
 
     `abs(x-3)` parses cleanly as a*b*s(x-3). It round-trips perfectly, so the
-    verification gate cannot see it. Only a pre-parse check can.
+    verification gate cannot see it; only a pre-parse check can. The check is
+    deliberately narrow: real OCR output is full of legitimate glued products
+    like `xy^2`, and rejecting those cost 17% of the corpus.
     """
     stripped = _LATEX_COMMAND.sub(" ", latex)
     for word in _WORD.findall(stripped):
-        if not _DIFFERENTIAL.match(word):
+        if word.lower() in _FUNCTION_WORDS:
             raise ConvertError(
-                "convert_failed", f"bare word would parse as a product: {word!r}"
+                "convert_failed", f"bare function name would parse as a product: {word!r}"
             )
 
 
@@ -109,9 +119,9 @@ def _back_parse(infix: str):
     return parse_expr(infix.replace("^", "**"), local_dict=local)
 
 
-def _verify(original, infix: str) -> bool:
+def _verify(original, infix: str, var) -> bool:
     try:
-        return simplify(original - _back_parse(infix)) == 0
+        return agree(original, _back_parse(infix), var)
     except Exception:
         return False
 
@@ -153,5 +163,5 @@ def convert(latex: str, hint: str | None = None) -> Result:
         var=str(var),
         bounds=printed_bounds,
         url=_build_url(kind, infix, str(var), printed_bounds),
-        verified=_verify(body, infix),
+        verified=_verify(body, infix, var),
     )
