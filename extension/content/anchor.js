@@ -22,7 +22,7 @@
       border-radius: 6px 0 0 6px; background: #2f7d95; color: #fff;
       font: 17px/1 ui-serif, Georgia, "Times New Roman", serif;
       box-shadow: 0 2px 8px rgba(0,0,0,.2);
-      opacity: .45; transform: translateX(5px);
+      opacity: .72; transform: translateX(4px);
       transition: opacity .15s ease, transform .15s ease;
     }
     .anchor:hover, .anchor:focus-visible { opacity: 1; transform: translateX(0); }
