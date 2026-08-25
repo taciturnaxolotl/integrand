@@ -1,0 +1,22 @@
+[project]
+name = "integrand"
+version = "0.1.0"
+description = "Screenshot a math expression, land on a step-by-step solver with it filled in"
+readme = "README.md"
+authors = [
+    { name = "Kieran Klukas", email = "kieran@dunkirk.sh" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "antlr4-python3-runtime==4.11",
+    "sympy>=1.13",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
