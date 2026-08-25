@@ -22,6 +22,10 @@ Then load `extension/` unpacked: `chrome://extensions` → developer mode →
 **Load unpacked**. Drag over a problem, check what it read, hit **Open
 calculator**.
 
+Where the page knows its own maths, expressions light up as you move over them
+and one click takes the whole thing — no rectangle to drag. Everything else
+still crops.
+
 Four ways to start a snip:
 
 - the toolbar button
@@ -64,6 +68,9 @@ python3 -m http.server -d .preview 8799
 ```
 
 See [BENCHMARKS.md](BENCHMARKS.md) for backend numbers.
+
+PDFs work too: Chrome's viewer is a normal `https:` document, so the overlay
+paints over it and the crop captures the rendered page.
 
 This depends on someone else's free site and will break if David Scherfgen
 changes his URL scheme.

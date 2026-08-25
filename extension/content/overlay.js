@@ -174,6 +174,33 @@
   let box = { x1: 0, y1: 0, x2: 0, y2: 0 };
   let dragging = false;
 
+  // Expressions the page reader can name, with where they sit. Knowing this is
+  // what lets a crop become a click: hovering one lights it up and taking it
+  // needs no drag at all. Cached for the life of one crop, and refreshed on
+  // scroll because the boxes are viewport-relative.
+  let known = [];
+  let hovered = null;
+  let origin = null;
+
+  function refreshKnown() {
+    try {
+      known = globalThis.integrandPageMath?.sources() ?? [];
+    } catch {
+      known = [];
+    }
+  }
+
+  function knownAt(x, y) {
+    let best = null;
+    for (const source of known) {
+      const { box: b } = source;
+      if (x < b.left || x > b.right || y < b.top || y > b.bottom) continue;
+      // the smallest box wins, so a term inside a line beats the whole line
+      if (!best || b.width * b.height < best.box.width * best.box.height) best = source;
+    }
+    return best;
+  }
+
   // The drag runs in any direction, so the live rect is the ordered box.
   // Without this a leftward drag computes a negative width, the CSS parser
   // throws the declaration away, and the overlay freezes mid-drag.
@@ -196,7 +223,7 @@
     Object.assign(edges.bottom.style, { ...column, top: `${y2}px`, height: "auto", bottom: "0px" });
     edges.left.style.width = `${x1}px`;
     edges.right.style.left = `${x2}px`;
-    crop.classList.toggle("hidden", !dragging);
+    crop.classList.toggle("hidden", !dragging && !hovered);
     Object.assign(crop.style, {
       left: `${x1}px`, top: `${y1}px`, width: `${x2 - x1}px`, height: `${y2 - y1}px`,
     });
@@ -206,6 +233,8 @@
     hidePanel();
     box = { x1: 0, y1: 0, x2: 0, y2: 0 };
     dragging = false;
+    hovered = null;
+    refreshKnown();
     layer.classList.add("on");
     paint();
   }
@@ -213,28 +242,56 @@
   function stop() {
     layer.classList.remove("on");
     dragging = false;
+    hovered = null;
+    origin = null;
+    layer.style.cursor = "crosshair";
   }
+
+  addEventListener("scroll", () => layer.classList.contains("on") && refreshKnown(), true);
 
   layer.addEventListener("mousedown", (event) => {
     event.preventDefault();
     dragging = true;
-    box = { x1: event.clientX, y1: event.clientY, x2: event.clientX, y2: event.clientY };
-    paint();
+    origin = { x: event.clientX, y: event.clientY };
+    // Hold the highlight until the pointer actually moves, so pressing on a
+    // known expression does not blink it away before the click lands.
+    if (!hovered) {
+      box = { x1: origin.x, y1: origin.y, x2: origin.x, y2: origin.y };
+      paint();
+    }
   });
 
   layer.addEventListener("mousemove", (event) => {
-    if (!dragging) return;
-    box.x2 = event.clientX;
-    box.y2 = event.clientY;
+    if (dragging) {
+      box = { x1: origin.x, y1: origin.y, x2: event.clientX, y2: event.clientY };
+      paint();
+      return;
+    }
+
+    const under = knownAt(event.clientX, event.clientY);
+    if (under === hovered) return;
+    hovered = under;
+    layer.style.cursor = under ? "pointer" : "crosshair";
+    box = under
+      ? { x1: under.box.left, y1: under.box.top, x2: under.box.right, y2: under.box.bottom }
+      : { x1: 0, y1: 0, x2: 0, y2: 0 };
     paint();
   });
 
   layer.addEventListener("mouseup", async (event) => {
     if (!dragging) return;
     dragging = false;
+    const moved =
+      !origin ||
+      Math.abs(event.clientX - origin.x) > 4 ||
+      Math.abs(event.clientY - origin.y) > 4;
+    const taken = hovered;
     const { x1, y1, x2, y2 } = bounds();
     const rect = { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
     stop();
+
+    // A click on something the reader already knows needs no rectangle.
+    if (!moved && taken) return submitKnown(taken.latex);
     if (rect.w < 10 || rect.h < 10) return; // a stray click, not a drag
     await submit(rect);
   });
@@ -245,19 +302,20 @@
     else hidePanel();
   });
 
+  async function submitKnown(latex) {
+    showPanel(`<div class="waiting"><span class="spinner"></span>Reading…</div>`, "working");
+    render(await atLeast(chrome.runtime.sendMessage({ type: "convert", latex })));
+  }
+
   async function submit(rect) {
     showPanel(`<div class="waiting"><span class="spinner"></span>Reading…</div>`, "working");
 
     // Ask the page first: where it knows its own maths the answer is exact,
     // and OCR is left with what is genuinely just pixels.
-    const known = globalThis.integrandPageMath?.latexUnder({
+    const covered = globalThis.integrandPageMath?.latexUnder({
       left: rect.x, top: rect.y, right: rect.x + rect.w, bottom: rect.y + rect.h,
     });
-    if (known) {
-      return render(
-        await atLeast(chrome.runtime.sendMessage({ type: "convert", latex: known.latex }))
-      );
-    }
+    if (covered) return submitKnown(covered.latex);
 
     // The overlay must be off-screen *and painted* before the capture, or it
     // lands in the screenshot. Two frames is the reliable way to know that.

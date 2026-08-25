@@ -37,6 +37,11 @@ All of the above is implemented in `extension/content/page-math.js`, which the
 overlay consults before it captures anything. OCR now only has to cover what is
 genuinely just pixels.
 
+Knowing *where* each expression sits pays a second time: during a crop, the one
+under the pointer is lit through the dimmed backdrop and a single click takes
+it. A camera cannot do that — it has pixels and no idea which of them are the
+problem.
+
 ## WebAssign needs its own path
 
 WebAssign renders neither LaTeX nor MathML for questions. It uses "watex":
