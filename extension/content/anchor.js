@@ -23,9 +23,14 @@
       font: 17px/1 ui-serif, Georgia, "Times New Roman", serif;
       box-shadow: 0 2px 8px rgba(0,0,0,.2);
       opacity: .72; transform: translateX(4px);
-      transition: opacity .15s ease, transform .15s ease;
+      transition: opacity .15s ease, transform .15s ease, background .15s ease;
     }
-    .anchor:hover, .anchor:focus-visible { opacity: 1; transform: translateX(0); }
+    /* Colour, not just opacity: once a selection is running the button is
+       already fully opaque and flush, so those two have nothing left to say. */
+    .anchor:hover, .anchor:focus-visible {
+      opacity: 1; transform: translateX(0); background: #24697f;
+    }
+    .anchor:active { background: #1d5665; }
     /* While a selection is running it is the way out of one, so it stops
        hiding and says so. The overlay's backdrops sit above the resting
        z-index, so it has to come up or it cannot be clicked. */
