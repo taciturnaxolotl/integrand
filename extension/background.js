@@ -51,12 +51,16 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
-//: The anchor only runs where its origin has been granted, so the registration
-//: is derived from the granted permissions rather than kept alongside them —
-//: revoking a site in Chrome's own UI takes the button with it.
+//: The registration is derived from the granted permissions rather than kept
+//: alongside them, so revoking a site in Chrome's own UI takes the button with
+//: it. The bundled homework sites are required permissions and cannot be
+//: revoked that way, so `offSites` is what turns those off.
 async function syncAnchorSites() {
   const granted = await chrome.permissions.getAll();
-  const matches = (granted.origins ?? []).filter((o) => !/localhost|127\.0\.0\.1/.test(o));
+  const { offSites = [] } = await chrome.storage.local.get("offSites");
+  const matches = (granted.origins ?? [])
+    .filter((o) => !/localhost|127\.0\.0\.1/.test(o))
+    .filter((o) => !offSites.includes(o));
 
   const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [ANCHOR_SCRIPT] });
   if (existing.length) await chrome.scripting.unregisterContentScripts({ ids: [ANCHOR_SCRIPT] });

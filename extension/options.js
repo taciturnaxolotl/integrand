@@ -1,19 +1,18 @@
 const DEFAULT_ENDPOINT = "http://localhost:8765";
 
-//: Suggestions only — nothing here is granted until it is clicked. Chosen
-//: because the page reader can already read them exactly: WebAssign's watex,
-//: and KaTeX or MathJax everywhere else.
-const SUGGESTED = [
-  { origin: "*://*.webassign.net/*", note: "watex, read exactly" },
-  { origin: "*://*.myopenmath.com/*", note: "MathJax" },
-  { origin: "*://*.instructure.com/*", note: "Canvas" },
-  { origin: "*://*.deltamath.com/*", note: "" },
-  { origin: "*://*.gradescope.com/*", note: "" },
-  { origin: "*://*.khanacademy.org/*", note: "KaTeX" },
-  { origin: "*://en.wikipedia.org/*", note: "LaTeX in image alt text" },
-  { origin: "*://math.stackexchange.com/*", note: "MathJax" },
-  { origin: "*://openstax.org/*", note: "MathML" },
-];
+//: Where the LaTeX comes from on each bundled site. The page reader handles
+//: all of these directly, which is why they ship switched on.
+const SOURCE = {
+  "*://*.webassign.net/*": "watex",
+  "*://*.myopenmath.com/*": "MathJax",
+  "*://*.instructure.com/*": "Canvas",
+  "*://*.deltamath.com/*": "",
+  "*://*.gradescope.com/*": "",
+  "*://*.khanacademy.org/*": "KaTeX",
+  "*://en.wikipedia.org/*": "image alt text",
+  "*://math.stackexchange.com/*": "MathJax",
+  "*://openstax.org/*": "MathML",
+};
 
 //: The manifest's own localhost grants land in permissions.getAll() too; they
 //: are the service, not a site the button belongs on.
@@ -21,83 +20,72 @@ const isSite = (origin) => !/localhost|127\.0\.0\.1/.test(origin);
 const label = (origin) => origin.replace(/^\*:\/\//, "").replace(/\/\*$/, "");
 const patternFor = (host) => `*://${host}/*`;
 
-const enabledCard = document.getElementById("enabled");
-const suggestedCard = document.getElementById("suggested");
+const list = document.getElementById("sites");
 const offer = document.getElementById("offer");
 
-function row(origin, note, action) {
-  const line = document.createElement("div");
-  line.className = "site";
-
-  const host = document.createElement("span");
-  host.className = "host";
-  host.textContent = label(origin);
-
-  line.append(host);
-  if (note) {
-    const hint = document.createElement("span");
-    hint.className = "note";
-    hint.textContent = note;
-    line.append(hint);
-  }
-  line.append(action);
-  return line;
+async function offSites() {
+  const { offSites = [] } = await chrome.storage.local.get("offSites");
+  return offSites;
 }
 
-function actionButton(text, quiet, onClick) {
-  const button = document.createElement("button");
-  button.textContent = text;
-  if (quiet) button.className = "quiet";
-  button.addEventListener("click", onClick);
-  return button;
-}
-
-async function resync() {
+async function setSite(origin, on) {
+  const off = await offSites();
+  const next = on ? off.filter((o) => o !== origin) : [...new Set([...off, origin])];
+  await chrome.storage.local.set({ offSites: next });
   await chrome.runtime.sendMessage({ type: "sync-anchor-sites" });
   paint();
 }
 
+function siteRow(origin, on) {
+  const row = document.createElement("div");
+  row.className = "site";
+
+  const host = document.createElement("span");
+  host.className = "host";
+  host.textContent = label(origin);
+  row.append(host);
+
+  const source = SOURCE[origin];
+  if (source) {
+    const note = document.createElement("span");
+    note.className = "note";
+    note.textContent = source;
+    row.append(note);
+  }
+
+  const toggle = document.createElement("label");
+  toggle.className = "switch";
+  toggle.title = on ? "Showing the ∫ here" : "Not showing the ∫ here";
+  const input = document.createElement("input");
+  input.type = "checkbox";
+  input.checked = on;
+  input.addEventListener("change", () => setSite(origin, input.checked));
+  const track = document.createElement("span");
+  track.className = "track";
+  toggle.append(input, track);
+  row.append(toggle);
+
+  return row;
+}
+
 async function paint() {
   const all = await chrome.permissions.getAll();
-  const granted = (all.origins ?? []).filter(isSite).sort();
+  const off = await offSites();
+  const origins = (all.origins ?? []).filter(isSite).sort();
 
-  enabledCard.replaceChildren();
-  if (!granted.length) {
+  list.replaceChildren();
+  if (!origins.length) {
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.textContent = "No sites yet. Add one below, or right-click the toolbar icon on any page.";
-    enabledCard.append(empty);
-  } else {
-    for (const origin of granted) {
-      enabledCard.append(
-        row(origin, "", actionButton("Remove", true, async () => {
-          await chrome.permissions.remove({ origins: [origin] });
-          resync();
-        }))
-      );
-    }
-  }
-
-  const remaining = SUGGESTED.filter((s) => !granted.includes(s.origin));
-  suggestedCard.replaceChildren();
-  if (!remaining.length) {
-    const empty = document.createElement("div");
-    empty.className = "empty";
-    empty.textContent = "All of them are on.";
-    suggestedCard.append(empty);
+    empty.textContent = "No sites. Open one and right-click the toolbar icon to add it.";
+    list.append(empty);
     return;
   }
-  for (const { origin, note } of remaining) {
-    suggestedCard.append(
-      row(origin, note, actionButton("Add", true, async () => {
-        if (await chrome.permissions.request({ origins: [origin] })) resync();
-      }))
-    );
-  }
+  for (const origin of origins) list.append(siteRow(origin, !off.includes(origin)));
 }
 
 //: Asking for a host permission needs an extension page and a real click. A
-//: content script has neither, which is why the icon menu sends the host here
+//: content script has neither, which is why the icon menu hands the host over
 //: rather than requesting it where you were standing.
 async function offerHostFromMenu() {
   const { pendingHost: host } = await chrome.storage.session.get("pendingHost");
@@ -111,7 +99,7 @@ async function offerHostFromMenu() {
   offer.hidden = false;
 
   if (await chrome.permissions.contains({ origins })) {
-    said.textContent = "already on";
+    said.textContent = "already covered";
     grant.remove();
     return;
   }
@@ -121,11 +109,20 @@ async function offerHostFromMenu() {
       said.textContent = "not granted";
       return;
     }
-    said.textContent = "on — reload the page";
+    said.textContent = "added — reload the page to see it";
     grant.remove();
-    resync();
   });
 }
+
+//: Repaint from the event, not from the request resolving. The promise settles
+//: before Chrome has committed the grant, so painting there left a stale list
+//: until reload. Listening also catches changes made in Chrome's own
+//: permissions UI while this page is open.
+function repaintOnPermissionChange() {
+  chrome.runtime.sendMessage({ type: "sync-anchor-sites" }).catch(() => {}).finally(paint);
+}
+chrome.permissions.onAdded.addListener(repaintOnPermissionChange);
+chrome.permissions.onRemoved.addListener(repaintOnPermissionChange);
 
 chrome.storage.local.get("endpoint").then(({ endpoint }) => {
   document.getElementById("endpoint").value = endpoint || DEFAULT_ENDPOINT;
