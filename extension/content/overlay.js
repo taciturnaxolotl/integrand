@@ -52,12 +52,15 @@
     .status { margin-left: auto; font-size: 11px; letter-spacing: .05em;
               color: var(--muted); }
     .status.bad { color: var(--bad); }
+    /* The mark carries its own frame, so hovering changes colour rather than
+       adding a second shape behind it. */
     .close { align-self: center; display: inline-flex; align-items: center;
-             justify-content: center; width: 22px; height: 22px; padding: 0;
-             border: 0; border-radius: 50%; background: none; color: var(--muted);
-             cursor: pointer; transition: color .12s ease, background .12s ease; }
-    .close:hover { color: var(--ink); background: var(--sunk); }
-    .close:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+             justify-content: center; width: 20px; height: 20px; padding: 0;
+             border: 0; background: none; color: var(--muted); cursor: pointer;
+             transition: color .12s ease; }
+    .close:hover { color: var(--ink); }
+    .close:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px;
+                           border-radius: 5px; }
 
     /* The rendered expression is the thing you actually compare against the
        page, so it gets the room and the raw LaTeX hides behind the pencil. */
@@ -106,9 +109,11 @@
         <span class="mark">∫&nbsp;<b>integrand</b></span>
         <span class="status"></span>
         <button class="close" title="Close (Esc)" aria-label="Close">
-          <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true">
-            <path d="M3 3 9 9 M9 3 3 9" fill="none" stroke="currentColor"
-                  stroke-width="1.5" stroke-linecap="round"/>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+               stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+               stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="m15 9-6 6"/><path d="m9 9 6 6"/>
           </svg>
         </button>
       </div>
