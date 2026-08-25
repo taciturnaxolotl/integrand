@@ -69,6 +69,11 @@ python3 -m http.server -d .preview 8799
 
 See [BENCHMARKS.md](BENCHMARKS.md) for backend numbers.
 
+Second and higher derivatives ride along too: `\frac{d^2}{dx^2}` is expanded
+into nested first derivatives so sympy will parse it at all, and the repeat
+count is sent as the site's own `difforder`, up to the fifth its dropdown
+offers.
+
 PDFs work too: Chrome's viewer is a normal `https:` document, so the overlay
 paints over it and the crop captures the rendered page.
 

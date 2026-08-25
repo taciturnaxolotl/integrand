@@ -133,6 +133,18 @@ EQUATIONS = [
     (r"V = \pi \int_0^a (r^2 - x^2) dx", "pi*(r^(2) - x^(2))", "x"),
 ]
 
+#: `\frac{d^2}{dx^2}` is not something sympy's parser knows, so it is expanded
+#: into nested first derivatives and the repeat count is sent as difforder.
+DERIVATIVE_ORDERS = [
+    (r"\frac{d}{dx}(x^2)", "x^(2)", "x", 1),
+    (r"\frac{d^2}{dx^2}(x^3)", "x^(3)", "x", 2),
+    (r"\frac{d^{3}}{dt^{3}}(t^5)", "t^(5)", "t", 3),
+    (r"\frac{\partial^2}{\partial y^2}(x y^3)", "x*y^(3)", "y", 2),
+    (r"\frac{d^{5}}{dx^{5}}(\sin(x))", "sin(x)", "x", 5),
+    # a constant in front still folds inside, and the order survives it
+    (r"3\frac{d^2}{dx^2}(x^4)", "3*x^(4)", "x", 2),
+]
+
 UNSUPPORTED = [
     (r"\oint x dx", "unsupported_operator"),
     (r"\int\int x dy dx", "unsupported_operator"),
@@ -144,6 +156,10 @@ UNSUPPORTED = [
     (r"\int f(x) dx", "convert_failed"),
     # two operators in one equation is a guess, not a reading
     (r"\int_1^x \frac{3}{t} dt = \int_{1/36}^x \frac{1}{t} dt", "unsupported_operator"),
+    # past what the site's order dropdown offers, so it is left unexpanded
+    (r"\frac{d^{7}}{dx^{7}}(x)", "unsupported_operator"),
+    # a mixed partial never matches the expansion, so it stays a product
+    (r"\frac{\partial^2}{\partial x \partial y}(x y)", "unsupported_operator"),
 ]
 
 
@@ -175,6 +191,15 @@ def test_equation_around_the_operator(latex, expected, var):
     result = convert(latex)
     assert result.infix == expected
     assert result.var == var
+
+
+@pytest.mark.parametrize(
+    "latex,expected,var,order", DERIVATIVE_ORDERS, ids=[c[0] for c in DERIVATIVE_ORDERS]
+)
+def test_derivative_order(latex, expected, var, order):
+    result = convert(latex)
+    assert (result.infix, result.var, result.order) == (expected, var, order)
+    assert (f"difforder={order}" in result.url) == (order > 1)
 
 
 @pytest.mark.parametrize("latex,code", UNSUPPORTED, ids=[c[0] for c in UNSUPPORTED])

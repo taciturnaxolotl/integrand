@@ -57,6 +57,7 @@ class Result:
     url: str
     verified: bool
     mathml: str | None
+    order: int
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -90,7 +91,11 @@ def _parse(latex: str):
     return expr.subs({Symbol("e"): E, Symbol("pi"): pi})
 
 
-def _route(expr) -> tuple[str, object, Symbol, tuple | None]:
+#: derivative-calculator.net's order dropdown stops at the fifth.
+MAX_DERIVATIVE_ORDER = 5
+
+
+def _route(expr) -> tuple[str, object, Symbol, tuple | None, int]:
     # `F(x) = \int_0^x f(t) dt` is a normal way for a problem to be written, and
     # a crop of it catches the whole line. One operator on one side is
     # unambiguous; two would be a guess, so that still refuses.
@@ -120,11 +125,18 @@ def _route(expr) -> tuple[str, object, Symbol, tuple | None]:
             raise ConvertError("unsupported_operator", "multiple integrals")
         limit = expr.limits[0]
         bounds = tuple(limit[1:]) if len(limit) == 3 else None
-        return "integral", expr.function, limit[0], bounds
+        return "integral", expr.function, limit[0], bounds, 1
     if isinstance(expr, Derivative):
-        if len(expr.variables) != 1:
-            raise ConvertError("unsupported_operator", "higher-order derivatives")
-        return "derivative", expr.expr, expr.variables[0], None
+        # Nested first derivatives arrive collapsed, so the repeat count is the
+        # order and the site takes it as difforder rather than us differentiating.
+        variables = expr.variables
+        if len(set(variables)) != 1:
+            raise ConvertError("unsupported_operator", "a mixed partial derivative")
+        if len(variables) > MAX_DERIVATIVE_ORDER:
+            raise ConvertError(
+                "unsupported_operator", f"a derivative of order {len(variables)}"
+            )
+        return "derivative", expr.expr, variables[0], None, len(variables)
     raise ConvertError(
         "unsupported_operator",
         f"expected an integral or derivative, got {type(expr).__name__}",
@@ -191,7 +203,9 @@ def _mathml(expr) -> str | None:
     return f'<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">{body}</math>'
 
 
-def _build_url(kind: str, infix: str, var: str, bounds: tuple[str, str] | None) -> str:
+def _build_url(
+    kind: str, infix: str, var: str, bounds: tuple[str, str] | None, order: int
+) -> str:
     """Both sites read `#`-delimited k=v pairs at parse time.
 
     The param names come from the inline bootstrap script on each page:
@@ -206,6 +220,8 @@ def _build_url(kind: str, infix: str, var: str, bounds: tuple[str, str] | None) 
         base = INTEGRAL_URL
     else:
         params = [("expr", infix), ("diffvar", var), ("showsteps", "1")]
+        if order > 1:
+            params.append(("difforder", str(order)))
         base = DERIVATIVE_URL
     return base + "&".join(f"{k}={quote(v, safe='')}" for k, v in params)
 
@@ -214,7 +230,7 @@ def convert(latex: str, hint: str | None = None) -> Result:
     cleaned = normalize(latex)
     _reject_implicit_words(cleaned)
     expression = _parse(cleaned)
-    kind, body, var, bounds = _route(expression)
+    kind, body, var, bounds, order = _route(expression)
 
     try:
         infix = to_infix(body)
@@ -228,7 +244,8 @@ def convert(latex: str, hint: str | None = None) -> Result:
         kind=kind,
         var=str(var),
         bounds=printed_bounds,
-        url=_build_url(kind, infix, str(var), printed_bounds),
+        url=_build_url(kind, infix, str(var), printed_bounds, order),
         verified=_verify(body, infix, var),
         mathml=_mathml(expression),
+        order=order,
     )

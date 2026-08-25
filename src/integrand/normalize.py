@@ -81,6 +81,30 @@ _BARE_ARGUMENT = re.compile(
     r"\s+(\d*\s*(?:[a-zA-Z]|\\[a-zA-Z]+)(?:\^(?:\{[^{}]*\}|\w))?)"
 )
 
+#: `\frac{d^2}{dx^2}` — sympy's parser has no rule for it and reads `d`, the
+#: variable and the exponents as a product of symbols, so a second derivative
+#: is refused rather than taken. Nested first derivatives it does understand,
+#: and they collapse to the same `Derivative(f, (x, 2))`.
+_HIGHER_ORDER = re.compile(
+    r"\\frac\{(d|\\partial)\^\{?(\d+)\}?\}"
+    r"\{\1\s*((?:[a-zA-Z]|\\[a-zA-Z]+))\^\{?\2\}?\}"
+)
+
+#: What derivative-calculator.net's own order dropdown accepts.
+_MAX_ORDER = 5
+
+
+def _expand_higher_order(latex: str) -> str:
+    def repeat(match: re.Match) -> str:
+        operator, order, variable = match.group(1), int(match.group(2)), match.group(3)
+        if not 2 <= order <= _MAX_ORDER:
+            return match.group(0)
+        gap = " " if operator == "\\partial" else ""
+        return f"\\frac{{{operator}}}{{{operator}{gap}{variable}}}" * order
+
+    return _HIGHER_ORDER.sub(repeat, latex)
+
+
 #: `)(` is always a product; nothing else can sit between two closed groups.
 #: `}(` is *not* — `\frac{d}{dx}(x^2)` is an operator meeting its operand.
 _ADJACENT_GROUPS = re.compile(r"\)\s*\(")
@@ -156,4 +180,5 @@ def normalize(latex: str) -> str:
     out = re.sub(r"\s+", " ", out).strip()
     if "\\int" in out:
         out = _GLUED_DIFFERENTIAL.sub(r" d\1", out)
-    return _strip_wrapping_braces(_make_products_explicit(_brackets_to_parens(out)))
+    out = _expand_higher_order(_brackets_to_parens(out))
+    return _strip_wrapping_braces(_make_products_explicit(out))
