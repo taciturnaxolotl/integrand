@@ -98,6 +98,11 @@ OCR_SHAPES = [
      "sec(3*t)*(tan(3*t) + sec(3*t))", "t"),
     (r"\int ( \sec 2 x + \tan 2 x ) d x", "tan(2*x) + sec(2*x)", "x"),
     (r"\int \tan 7 \theta \, d \theta", "tan(7*theta)", "theta"),
+    # square brackets used as grouping, which sympy rejects outright
+    (r"\int [x-1]^2 dx", "(x - 1)^(2)", "x"),
+    (r"\int \sqrt[3]{[x+1]^2} dx", "root(3, (x + 1)^(2))", "x"),
+    # LaTeX's non-breaking space
+    (r"\int x^2 ~ dx", "x^(2)", "x"),
     # glued products are genuine products, not dropped backslashes
     (r"\int xy\,dx", "x*y", "x"),
 ]
@@ -111,10 +116,15 @@ IMPLICIT_PRODUCTS = [
     (r"\int 2x(x-1)(x+3) dx", "((2*x)*(x - 1))*(x + 3)"),
 ]
 
-#: A problem is often written as an equation around the operator.
+#: A problem is often written as an equation around the operator, or with a
+#: constant in front of it. Both operators are linear, so the constant folds in.
 EQUATIONS = [
     (r"F(x) = \int_0^x 4\tan(t) dt", "4*tan(t)", "t"),
     (r"F(x) = \int_1^{x^4} \frac{1}{t} dt", "(1)/(t)", "t"),
+    (r"2 \pi \int_0^3 x^4 dx", "2*pi*x^(4)", "x"),
+    (r"2\pi \int_0^8 (y+6)\sqrt{8-y} dy", "2*pi*sqrt(8 - y)*(y + 6)", "y"),
+    (r"3\frac{d}{dx}(x^2)", "3*x^(2)", "x"),
+    (r"V = \pi \int_0^a (r^2 - x^2) dx", "pi*(r^(2) - x^(2))", "x"),
 ]
 
 UNSUPPORTED = [

@@ -13,7 +13,7 @@ from html import unescape
 from urllib.parse import quote
 
 from sympy import (
-    Abs, Derivative, E, Eq, Integral, Pow, Rational, Symbol, sqrt, log, pi,
+    Abs, Derivative, E, Eq, Integral, Mul, Pow, Rational, Symbol, sqrt, log, pi,
 )
 from sympy import functions as sympy_functions
 from sympy.parsing.latex import parse_latex
@@ -94,12 +94,26 @@ def _route(expr) -> tuple[str, object, Symbol, tuple | None]:
     # a crop of it catches the whole line. One operator on one side is
     # unambiguous; two would be a guess, so that still refuses.
     if isinstance(expr, Eq):
-        sides = [side for side in expr.args if isinstance(side, (Integral, Derivative))]
+        sides = [side for side in expr.args if side.atoms(Integral, Derivative)]
         if len(sides) != 1:
             raise ConvertError(
                 "unsupported_operator", "an equation with no single integral or derivative"
             )
         return _route(sides[0])
+
+    # `2\pi \int_0^3 x^4 dx` — a constant in front of the operator, which the
+    # shell and disk methods produce constantly. Both operators are linear, so
+    # the factor folds inside and the answer is unchanged.
+    if isinstance(expr, Mul):
+        inner = [arg for arg in expr.args if isinstance(arg, (Integral, Derivative))]
+        if len(inner) == 1:
+            operator = inner[0]
+            outside = Mul(*[arg for arg in expr.args if arg is not operator])
+            if isinstance(operator, Integral):
+                folded = Integral(outside * operator.function, *operator.limits)
+            else:
+                folded = Derivative(outside * operator.expr, *operator.variables)
+            return _route(folded)
     if isinstance(expr, Integral):
         if len(expr.limits) != 1:
             raise ConvertError("unsupported_operator", "multiple integrals")

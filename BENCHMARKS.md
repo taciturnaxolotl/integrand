@@ -56,16 +56,36 @@ score and the failures reproducible. There is one correct answer; do not sample.
 
 ## WebAssign
 
-36 integrals from a real WebAssign assignment, cloned into a grid and rendered
-at 2x so the pixels match a Retina capture. UniMERNet small: **35/35 exact**.
-The 36th is `∫₁ˣ 3/t dt = ∫_{1/36}ˣ 1/t dt`, which has an integral on both
-sides; refusing that is correct, not a miss.
+Every integral from all ten assignments of one semester's calculus course,
+cloned into grids and rendered at 2x so the pixels match a Retina capture.
+UniMERNet small throughout.
 
-Getting there took six converter fixes, every one found by real data rather
-than by the synthetic corpus — implicit products (`x(x-8)`), exponents binding
-to a group inside one, `\Big` sizing commands, `)(` adjacency, bare trig
-arguments (`\sec 3t(…)`), and equations wrapped around the operator
-(`F(x) = ∫…`). All are regressions in the test suite now.
+| set | solvable | read correctly | correctly refused |
+|---|---|---|---|
+| 5.7 Integrals Involving Ln(u) | 35 | 35 | 1 |
+| the other nine assignments | 72 | 72 | 7 |
+
+**107/107 on everything that is actually an integral.** The eight refusals are
+all right to refuse: four are abstract templates (`V = π∫₀ᵃ [f(x)]² dx`, where
+`f` is an unknown function), two are an integral followed by instruction text
+(`… dx; u = ln(x), dv = x² dx`), one has an integral on both sides of an
+equation, and one is a reduction-formula fragment my grid clipped.
+
+Getting there took nine converter fixes, every one found by real data rather
+than by the synthetic corpus:
+
+- implicit products — `x(x-8)` parses as a *function call*
+- an exponent inside one binds to the group, not the product: `x(\ln x)^9`
+- `\Big`/`\Bigl` sizing commands reaching the printer as a function
+- `)(` adjacency
+- bare trig arguments — `\sec 3t(…)` hands the function the whole product
+- equations wrapped around the operator — `F(x) = ∫…`
+- square brackets as grouping — `[f(x)]^2`, which sympy rejects outright
+- a constant in front of the operator — `2π∫₀³ x⁴ dx`, folded inside since
+  both operators are linear
+- `~`, LaTeX's non-breaking space
+
+All are regressions in the test suite now.
 
 ## Accuracy gap
 

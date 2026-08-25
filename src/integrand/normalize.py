@@ -35,6 +35,7 @@ _SUBSTITUTIONS: list[tuple[str, str]] = [
     (r"\\displaystyle\b|\\limits\b|\\nolimits\b", ""),
     (r"\\(?:quad|qquad)\b", " "),
     (r"\\[,;:!]", ""),
+    (r"~", " "),  # LaTeX's non-breaking space
     (r"\\ ", " "),
     (r"\\(?:cdot|times|ast)\b", "*"),
     # `\frac{d}{d x}` — models space the differential the way they space
@@ -122,6 +123,18 @@ def _make_products_explicit(latex: str) -> str:
     return _ADJACENT_GROUPS.sub(r") \\cdot (", _IMPLICIT_CALL.sub(replace, latex))
 
 
+#: `[f(x)]^2` — square brackets used as grouping, which sympy's parser rejects
+#: outright. The one place they mean something else is `\sqrt[3]{x}`, so that
+#: gets parked behind a sentinel while the rest are swapped for parens.
+_ROOT_INDEX = re.compile(r"\\sqrt\s*\[([^\]]*)\]")
+
+
+def _brackets_to_parens(latex: str) -> str:
+    parked = _ROOT_INDEX.sub(lambda m: f"\\sqrt\x00{m.group(1)}\x01", latex)
+    swapped = parked.replace("[", "(").replace("]", ")")
+    return swapped.replace("\x00", "[").replace("\x01", "]")
+
+
 def _strip_wrapping_braces(latex: str) -> str:
     """Drop a brace pair that wraps the whole expression: `{\frac{d}{dx}}(x)`."""
     while latex.startswith("{") and latex.endswith("}"):
@@ -144,4 +157,4 @@ def normalize(latex: str) -> str:
     out = re.sub(r"\s+", " ", out).strip()
     if "\\int" in out:
         out = _GLUED_DIFFERENTIAL.sub(r" d\1", out)
-    return _strip_wrapping_braces(_make_products_explicit(out))
+    return _strip_wrapping_braces(_make_products_explicit(_brackets_to_parens(out)))
