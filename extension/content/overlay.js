@@ -306,6 +306,8 @@
     // The status stays silent when it worked. The rendered expression already
     // says what was read and the live buttons already say it is usable, so a
     // permanent "verified" is chrome that makes the warnings harder to notice.
+    // "from page" is the exception: read off the page rather than guessed at,
+    // so it genuinely needs no second look.
     showPanel(`
       <div class="render hidden"></div>
       <div class="edit${blocked ? "" : " hidden"}">
@@ -319,7 +321,6 @@
         <button class="ghost sym">Symbolab</button>
         <button class="ghost icon pencil" title="Edit the LaTeX">&#9998;</button>
       </div>
-    // Read off the page rather than guessed at, so it needs no second look.
     `, failed ? "not converted" : unverified ? "unverified" : source ? "from page" : "",
        blocked ? "bad" : "");
 
