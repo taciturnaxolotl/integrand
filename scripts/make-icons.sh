@@ -13,11 +13,14 @@ set -eu
 
 cd "$(dirname "$0")/.."
 out=extension/images
-mark="M 379,113 C 379,31 266,31 277,133 L 236,379 C 246,481 133,481 133,399"
+# Scaled to ~0.69 of the plate and centred: at full size the terminals ran past
+# the rounded corners and got clipped. Stroke is a little under proportional so
+# the counters stay open once it steps down to 16px.
+mark="M 341,157 C 341,100 263,100 271,171 L 242,341 C 249,412 171,412 171,355"
 
 magick -size 512x512 xc:none \
   -fill '#2f7d95' -draw 'roundrectangle 8,8,503,503,112,112' \
-  -fill none -stroke white -strokewidth 84 \
+  -fill none -stroke white -strokewidth 60 \
   -draw "stroke-linecap round stroke-linejoin round path '$mark'" \
   "$out/icon-512.png"
 
