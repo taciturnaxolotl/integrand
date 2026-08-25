@@ -13,7 +13,8 @@ from html import unescape
 from urllib.parse import quote
 
 from sympy import (
-    Abs, Derivative, E, Eq, Integral, Mul, Pow, Rational, Symbol, sqrt, log, pi,
+    Abs, Derivative, E, Eq, Function, Integral, Mul, Pow, Rational, Symbol,
+    sqrt, log, pi,
 )
 from sympy import functions as sympy_functions
 from sympy.parsing.latex import parse_latex
@@ -153,6 +154,28 @@ def _verify(original, infix: str, var) -> bool:
         return False
 
 
+#: For a base that will be shown as a subscript rather than a second argument.
+_SUBSCRIPT = str.maketrans("0123456789", "₀₁₂₃₄₅₆₇₈₉")
+
+
+def _readable_logs(expr):
+    """Spell logs the way they are written, for display only.
+
+    sympy's `log` *is* the natural log, and both `log(x)` and the two-argument
+    `log(x, E)` that `\ln` parses to print as "log" — so the render read
+    `log(x, e)` beside an infix line saying `ln(x)`. A numeric base reads worse
+    still: `log(x, 10)` looks like a log of two things.
+    """
+    swaps = {}
+    for call in expr.atoms(log):
+        if len(call.args) == 1 or call.args[1] is E:
+            swaps[call] = Function("ln")(call.args[0])
+        elif call.args[1].is_Integer:
+            base = str(call.args[1]).translate(_SUBSCRIPT)
+            swaps[call] = Function(f"log{base}")(call.args[0])
+    return expr.xreplace(swaps) if swaps else expr
+
+
 def _mathml(expr) -> str | None:
     """Presentation MathML for the whole expression, differential and all.
 
@@ -162,7 +185,7 @@ def _mathml(expr) -> str | None:
     the page said `e^x`.
     """
     try:
-        body = unescape(mathml(expr, printer="presentation"))
+        body = unescape(mathml(_readable_logs(expr), printer="presentation"))
     except Exception:
         return None
     return f'<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">{body}</math>'

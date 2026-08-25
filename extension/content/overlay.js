@@ -74,24 +74,18 @@
     .close:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px;
                            border-radius: 5px; }
 
-    /* The rendered expression is what you compare against the page, so it gets
-       the room. Clicking it is also the way to the raw LaTeX, which keeps the
-       source out of sight until something looks wrong. */
-    .render { margin: 0 0 7px; padding: 9px 8px; text-align: center; font-size: 17px;
+    /* Every state is held to the same box, so swapping the spinner for a
+       result does not make the panel jump. "safe" centring so a wide
+       expression scrolls from its left edge rather than being clipped. */
+    .body { min-height: 102px; }
+    .render { margin: 0 0 7px; padding: 9px 8px; font-size: 17px; min-height: 48px;
+              display: flex; align-items: center; justify-content: safe center;
               color: var(--ink); background: var(--sunk); border: 1px solid var(--line);
-              border-radius: 4px; overflow-x: auto; cursor: text;
-              transition: border-color .12s ease; }
-    .render:hover { border-color: var(--muted); }
+              border-radius: 4px; overflow-x: auto; }
     .render math { color: inherit; }
-    .edit { margin-bottom: 2px; }
-    .edit .row { margin-top: 6px; justify-content: flex-end; }
+    .latex { font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+             color: var(--muted); word-break: break-all; }
     .hidden { display: none; }
-
-    textarea { display: block; width: 100%; box-sizing: border-box; height: 40px;
-               resize: vertical; font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
-               padding: 6px 7px; border: 1px solid var(--line); border-radius: 4px;
-               background: var(--sunk); color: var(--ink); }
-    textarea:focus { outline: 1px solid var(--accent); outline-offset: -1px; }
 
     .note { margin-top: 6px; font-size: 11.5px; color: var(--bad); }
 
@@ -107,7 +101,8 @@
                border-top-color: var(--accent); border-radius: 50%;
                animation: spin .7s linear infinite; display: inline-block;
                vertical-align: -1px; margin-right: 6px; }
-    .waiting { color: var(--muted); font-size: 11.5px; }
+    .waiting { min-height: 102px; display: flex; align-items: center;
+               justify-content: center; color: var(--muted); font-size: 11.5px; }
     @keyframes spin { to { transform: rotate(360deg); } }
   `;
 
@@ -343,11 +338,8 @@
     // already say so, and a badge that is almost always lit only makes the
     // warnings easier to miss.
     showPanel(`
-      <div class="render hidden" title="Click to edit the LaTeX"></div>
-      <div class="edit${blocked ? "" : " hidden"}">
-        <textarea class="latex" spellcheck="false">${escape(latex)}</textarea>
-        <div class="row"><button class="ghost reread">Re-read</button></div>
-      </div>
+      <div class="render hidden"></div>
+      ${failed ? `<div class="latex">${escape(latex)}</div>` : ""}
       ${failed ? `<div class="note">${escape(result.detail || result.error)}</div>` : ""}
       ${unverified ? `<div class="note">Round-trip check failed — this may not be the expression above.</div>` : ""}
       <div class="row">
@@ -364,7 +356,7 @@
     body.querySelector(".go")?.addEventListener("click", () => open_(result.url));
 
     body.querySelector(".sym").addEventListener("click", () => {
-      open_(`${SYMBOLAB}${encodeURIComponent(body.querySelector(".latex").value)}`);
+      open_(`${SYMBOLAB}${encodeURIComponent(latex)}`);
     });
 
     // What the site is actually sent. Showing it permanently was noise; it is
@@ -376,17 +368,6 @@
       setTimeout(() => (button.innerHTML = COPY_ICON), 1400);
     });
 
-    const editor = body.querySelector(".edit");
-    rendered.addEventListener("click", () => {
-      editor.classList.remove("hidden");
-      body.querySelector(".latex").focus();
-    });
-
-    body.querySelector(".reread").addEventListener("click", async () => {
-      const edited = body.querySelector(".latex").value;
-      showPanel(`<div class="waiting"><span class="spinner"></span>Converting…</div>`, "working");
-      render(await atLeast(chrome.runtime.sendMessage({ type: "convert", latex: edited })));
-    });
   }
 
   // The panel stays put after opening a calculator. Only Escape, the close

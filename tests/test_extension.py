@@ -7,6 +7,8 @@ That has happened twice.
 """
 
 import re
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -46,6 +48,18 @@ def test_no_comment_inside_a_template_literal(path):
 def test_template_literals_are_balanced(path):
     """An odd backtick count means a literal is left open at end of file."""
     assert len(BACKTICK.findall(path.read_text())) % 2 == 0
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node is not installed")
+@pytest.mark.parametrize("path", SOURCES, ids=lambda p: p.name)
+def test_parses(path):
+    """A stray backtick inside a CSS comment closes the template literal early.
+
+    Counting backticks cannot see that — the pair is balanced — so the only
+    real check is handing the file to a parser.
+    """
+    done = subprocess.run(["node", "--check", path], capture_output=True, text=True)
+    assert done.returncode == 0, done.stderr
 
 
 def test_the_check_catches_the_real_shape():
