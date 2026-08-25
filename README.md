@@ -22,9 +22,10 @@ Then load `extension/` unpacked: `chrome://extensions` → developer mode →
 **Load unpacked**. Drag over a problem, check what it read, hit **Open
 calculator**.
 
-A beat after the result, the panel names the technique the problem wants — *try
-a substitution*, *integration by parts* — with the giveaway (*u = ln(x)*) behind
-a click. It comes from sympy's `integral_steps` rule tree, so it is a decision a
+A beat after the result a **Hint?** appears. Clicking it names the technique —
+*try a substitution*, *integration by parts* — and clicking again gives up
+*u = ln(x)*. Three steps, each asked for, because that a hint exists gives
+nothing away and what u is has done the problem. It comes from sympy's `integral_steps` rule tree, so it is a decision a
 CAS actually made rather than a sentence a model produced, and it cannot be
 confidently wrong.
 

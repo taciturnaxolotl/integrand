@@ -474,25 +474,34 @@
     chrome.runtime.sendMessage({ type: "open", url });
   }
 
-  // The technique, in two goes. Naming it is a nudge; saying what u is has
-  // done the problem, so that waits to be asked for.
+  // The technique, in three goes. That a hint exists gives nothing away;
+  // naming the technique is a nudge; saying what u is has done the problem.
+  // Each step is asked for.
+  function link(label, onClick) {
+    const button = document.createElement("button");
+    button.textContent = label;
+    button.addEventListener("click", onClick);
+    return button;
+  }
+
   async function offerHint(slot, latex) {
     const reply = await chrome.runtime.sendMessage({ type: "hint", latex });
     const found = reply?.hint;
     if (!found || !slot.isConnected) return;
 
-    slot.textContent = `Try ${found.technique}. `;
-    if (!found.detail) return;
-
-    const more = document.createElement("button");
-    more.textContent = "show me";
-    more.addEventListener("click", () => {
-      const give = document.createElement("span");
-      give.className = "give";
-      give.textContent = found.detail;
-      more.replaceWith(give);
-    });
-    slot.append(more);
+    slot.append(
+      link("Hint?", () => {
+        slot.textContent = `Try ${found.technique}. `;
+        if (!found.detail) return;
+        const more = link("show me", () => {
+          const give = document.createElement("span");
+          give.className = "give";
+          give.textContent = found.detail;
+          more.replaceWith(give);
+        });
+        slot.append(more);
+      })
+    );
   }
 
   // The clipboard API needs a focused document; a page that steals focus back
