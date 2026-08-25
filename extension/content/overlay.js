@@ -68,11 +68,12 @@
        adding a second shape behind it. */
     .close { align-self: center; display: inline-flex; align-items: center;
              justify-content: center; width: 20px; height: 20px; padding: 0;
-             border: 0; background: none; color: var(--muted); cursor: pointer;
-             transition: color .12s ease; }
-    .close:hover { color: var(--ink); }
-    .close:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px;
-                           border-radius: 5px; }
+             border: 0; border-radius: 5px; background: none; color: var(--muted);
+             cursor: pointer; transition: color .12s ease, background .12s ease; }
+    .close:hover { color: var(--ink);
+                   background: color-mix(in oklch, var(--ink) 9%, transparent); }
+    .close:active { background: color-mix(in oklch, var(--ink) 16%, transparent); }
+    .close:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
 
     /* Every state is held to the same box, so swapping the spinner for a
        result does not make the panel jump. "safe" centring so a wide
@@ -90,11 +91,30 @@
     .note { margin-top: 6px; font-size: 11.5px; color: var(--bad); }
 
     .row { display: flex; gap: 6px; align-items: center; margin-top: 9px; }
+    /* Hover moves toward the ink either way: darker on paper, brighter in the
+       dark, so one rule covers both schemes. */
     button { font: inherit; font-size: 11.5px; line-height: 1; padding: 6px 10px;
              border-radius: 4px; border: 1px solid var(--accent);
-             background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+             background: var(--accent); color: var(--accent-ink); cursor: pointer;
+             transition: background .12s ease, border-color .12s ease, color .12s ease; }
+    button:hover:not(:disabled) {
+      background: color-mix(in oklch, var(--accent) 84%, var(--ink));
+      border-color: color-mix(in oklch, var(--accent) 84%, var(--ink));
+    }
+    button:active:not(:disabled) {
+      background: color-mix(in oklch, var(--accent) 72%, var(--ink));
+    }
     button.ghost { background: transparent; color: var(--accent); }
-    button.icon { margin-left: auto; padding: 5px 8px; font-size: 13px; line-height: 1; }
+    button.ghost:hover:not(:disabled) {
+      background: color-mix(in oklch, var(--accent) 13%, transparent);
+      border-color: var(--accent); color: var(--accent);
+    }
+    button.ghost:active:not(:disabled) {
+      background: color-mix(in oklch, var(--accent) 22%, transparent);
+    }
+    button:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
+    button.icon { margin-left: auto; padding: 5px 8px; font-size: 13px; line-height: 1;
+                  display: inline-flex; align-items: center; justify-content: center; }
     button:disabled { opacity: .45; cursor: not-allowed; }
 
     .spinner { width: 11px; height: 11px; border: 2px solid var(--line);
@@ -117,11 +137,10 @@
         <span class="mark">∫&nbsp;<b>integrand</b></span>
         <span class="status"></span>
         <button class="close" title="Close (Esc)" aria-label="Close">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none"
                stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="3" width="18" height="18" rx="2"/>
-            <path d="m15 9-6 6"/><path d="m9 9 6 6"/>
+            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
           </svg>
         </button>
       </div>
