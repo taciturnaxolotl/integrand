@@ -46,15 +46,27 @@
              padding: 9px 11px 10px; }
     .panel.on { display: block; }
 
-    .head { display: flex; align-items: baseline; gap: 6px; margin-bottom: 7px; }
+    .head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 7px; }
     .mark { font-size: 13px; color: var(--muted); letter-spacing: .03em; }
     .mark b { color: var(--ink); font-weight: 600; }
     .status { margin-left: auto; font-size: 11px; letter-spacing: .05em;
               color: var(--muted); text-transform: lowercase; }
     .status.bad { color: var(--bad); }
     .status.good { color: var(--good); }
+    .close { align-self: center; border: 0; background: none; color: var(--muted);
+             font: 15px/1 ui-serif, Georgia, serif; padding: 0 1px; cursor: pointer; }
+    .close:hover { color: var(--ink); }
 
-    textarea { display: block; width: 100%; box-sizing: border-box; height: 44px;
+    /* The rendered expression is the thing you actually compare against the
+       page, so it gets the room and the raw LaTeX hides behind the pencil. */
+    .render { margin: 0 0 7px; padding: 9px 8px; text-align: center; font-size: 17px;
+              color: var(--ink); background: var(--sunk); border: 1px solid var(--line);
+              border-radius: 4px; overflow-x: auto; }
+    .render math { color: inherit; }
+    .edit { margin-bottom: 2px; }
+    .hidden { display: none; }
+
+    textarea { display: block; width: 100%; box-sizing: border-box; height: 40px;
                resize: vertical; font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
                padding: 6px 7px; border: 1px solid var(--line); border-radius: 4px;
                background: var(--sunk); color: var(--ink); }
@@ -91,6 +103,7 @@
       <div class="head">
         <span class="mark">∫&nbsp;<b>integrand</b></span>
         <span class="status"></span>
+        <button class="close" title="Close (Esc)">&times;</button>
       </div>
       <div class="body"></div>
     </div>
@@ -235,6 +248,36 @@
   //: when our own conversion refused the expression. It is the escape hatch.
   const SYMBOLAB = "https://www.symbolab.com/solver/step-by-step/";
 
+  //: Everything sympy's presentation printer emits, and nothing else. The
+  //: MathML is ours, but it is derived from OCR output, so it goes through an
+  //: allowlist rather than straight into innerHTML.
+  const MATHML_TAGS = new Set([
+    "math", "mrow", "mi", "mn", "mo", "ms", "mtext", "mspace", "mstyle", "mpadded",
+    "msup", "msub", "msubsup", "munder", "mover", "munderover",
+    "mfrac", "msqrt", "mroot", "mfenced", "mtable", "mtr", "mtd",
+  ]);
+  const MATHML_ATTRS = new Set(["display", "mathvariant", "width", "linethickness", "stretchy", "separators"]);
+
+  function mountMath(target, xml) {
+    let parsed;
+    try {
+      parsed = new DOMParser().parseFromString(xml, "application/xhtml+xml");
+    } catch {
+      return false;
+    }
+    if (parsed.querySelector("parsererror")) return false;
+
+    const root = parsed.documentElement;
+    for (const node of [root, ...root.querySelectorAll("*")]) {
+      if (!MATHML_TAGS.has(node.localName)) return false;
+      for (const attr of [...node.attributes]) {
+        if (!MATHML_ATTRS.has(attr.name)) node.removeAttribute(attr.name);
+      }
+    }
+    target.replaceChildren(document.importNode(root, true));
+    return true;
+  }
+
   // The LaTeX is shown on success, not only on failure. Roughly one snip in
   // four is misread in a way that still converts and still verifies — a
   // misread variable is a valid expression, just not the one on screen — so
@@ -251,35 +294,57 @@
     const where = result.kind === "derivative" ? "Derivative" : "Integral";
 
     showPanel(`
-      <textarea class="latex" spellcheck="false">${escape(latex)}</textarea>
+      <div class="render hidden"></div>
+      <div class="edit${blocked ? "" : " hidden"}">
+        <textarea class="latex" spellcheck="false">${escape(latex)}</textarea>
+      </div>
       ${blocked ? "" : `<div class="infix" title="${escape(result.infix)}">${escape(result.infix)}</div>`}
       ${failed ? `<div class="note">${escape(result.detail || result.error)}</div>` : ""}
       ${unverified ? `<div class="note">Round-trip check failed — this may not be the expression above.</div>` : ""}
       <div class="row">
         <button class="go" ${blocked ? "disabled" : ""}>${where} calc</button>
         <button class="ghost sym">Symbolab</button>
-        <button class="ghost icon again" title="Re-read the edited LaTeX">↻</button>
+        <button class="ghost icon pencil" title="Edit the LaTeX">&#9998;</button>
       </div>
     `, failed ? "not converted" : unverified ? "unverified" : `d${result.var} · verified`,
        blocked ? "bad" : "good");
 
+    const rendered = body.querySelector(".render");
+    if (result.mathml && mountMath(rendered, result.mathml)) rendered.classList.remove("hidden");
+
     body.querySelector(".go")?.addEventListener("click", () => open_(result.url));
 
     body.querySelector(".sym").addEventListener("click", () => {
-      const edited = body.querySelector(".latex").value;
-      open_(`${SYMBOLAB}${encodeURIComponent(edited)}`);
+      open_(`${SYMBOLAB}${encodeURIComponent(body.querySelector(".latex").value)}`);
     });
 
-    body.querySelector(".again").addEventListener("click", async () => {
+    // One button, two jobs: reveal the source, then re-read it once edited.
+    const pencil = body.querySelector(".pencil");
+    const editor = body.querySelector(".edit");
+    const setMode = (editing) => {
+      editor.classList.toggle("hidden", !editing);
+      pencil.innerHTML = editing ? "&#8635;" : "&#9998;";
+      pencil.title = editing ? "Re-read the edited LaTeX" : "Edit the LaTeX";
+    };
+    setMode(blocked);
+
+    pencil.addEventListener("click", async () => {
+      if (editor.classList.contains("hidden")) {
+        setMode(true);
+        body.querySelector(".latex").focus();
+        return;
+      }
       const edited = body.querySelector(".latex").value;
       showPanel(`<div class="waiting"><span class="spinner"></span>Converting…</div>`, "working");
       render(await chrome.runtime.sendMessage({ type: "convert", latex: edited }));
     });
   }
 
+  //: The panel stays put after opening a calculator — you often want the other
+  //: button too, or a second look at what it read. Only Escape, the close
+  //: button, or the next capture take it down.
   function open_(url) {
     chrome.runtime.sendMessage({ type: "open", url });
-    hidePanel();
   }
 
   function parseColor(value) {
@@ -325,6 +390,8 @@
   function hidePanel() {
     panel.classList.remove("on");
   }
+
+  shadow.querySelector(".close").addEventListener("click", hidePanel);
 
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === "start-crop") start();

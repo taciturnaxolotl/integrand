@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import asdict, dataclass
+from html import unescape
 from urllib.parse import quote
 
 from sympy import (
@@ -16,6 +17,7 @@ from sympy import (
 )
 from sympy import functions as sympy_functions
 from sympy.parsing.latex import parse_latex
+from sympy.printing.mathml import mathml
 from sympy.parsing.sympy_parser import parse_expr
 
 from .equivalence import agree
@@ -53,6 +55,7 @@ class Result:
     bounds: tuple[str, str] | None
     url: str
     verified: bool
+    mathml: str | None
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -126,6 +129,21 @@ def _verify(original, infix: str, var) -> bool:
         return False
 
 
+def _mathml(expr) -> str | None:
+    """Presentation MathML for the whole expression, differential and all.
+
+    Rendering what we *parsed* rather than what OCR emitted is the more useful
+    check: a misread variable produces a valid expression that passes every
+    downstream test, so the only thing that catches it is seeing `e^A` where
+    the page said `e^x`.
+    """
+    try:
+        body = unescape(mathml(expr, printer="presentation"))
+    except Exception:
+        return None
+    return f'<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">{body}</math>'
+
+
 def _build_url(kind: str, infix: str, var: str, bounds: tuple[str, str] | None) -> str:
     """Both sites read `#`-delimited k=v pairs at parse time.
 
@@ -148,7 +166,8 @@ def _build_url(kind: str, infix: str, var: str, bounds: tuple[str, str] | None) 
 def convert(latex: str, hint: str | None = None) -> Result:
     cleaned = normalize(latex)
     _reject_implicit_words(cleaned)
-    kind, body, var, bounds = _route(_parse(cleaned))
+    expression = _parse(cleaned)
+    kind, body, var, bounds = _route(expression)
 
     try:
         infix = to_infix(body)
@@ -164,4 +183,5 @@ def convert(latex: str, hint: str | None = None) -> Result:
         bounds=printed_bounds,
         url=_build_url(kind, infix, str(var), printed_bounds),
         verified=_verify(body, infix, var),
+        mathml=_mathml(expression),
     )

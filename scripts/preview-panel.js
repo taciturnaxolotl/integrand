@@ -34,12 +34,14 @@ const RESULTS = {
     latex: "\\int \\frac{2x^{2}+7x-1}{x-4}dx",
     infix: "((2*x^(2) + 7*x) - 1)/(x - 4)",
     kind: "integral", var: "x", verified: true,
+    mathml: "<math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><mrow><mo>\u222b</mo><mrow><mfrac><mrow><mrow><mrow><mn>2</mn><mo>\u2062</mo><msup><mi>x</mi><mn>2</mn></msup></mrow><mo>+</mo><mrow><mn>7</mn><mo>\u2062</mo><mi>x</mi></mrow></mrow><mo>-</mo><mn>1</mn></mrow><mrow><mi>x</mi><mo>-</mo><mn>4</mn></mrow></mfrac></mrow><mo>\u2146</mo><mi>x</mi></mrow></math>",
     url: "https://www.integral-calculator.com/#expr=x&intvar=x",
   },
   unverified: {
     latex: "\\int \\frac{2x^{2}+7x-1}{x-4}dx",
     infix: "((2*x^(2) + 7*x) - 1)/(x - 4)",
     kind: "integral", var: "x", verified: false,
+    mathml: "<math xmlns=\"http://www.w3.org/1998/Math/MathML\" display=\"block\"><mrow><msubsup><mo>\u222b</mo><mn>0</mn><mi>\u03c0</mi></msubsup><mrow><mi>sin</mi><mrow><mo>(</mo><mi>x</mi><mo>)</mo></mrow></mrow><mo>\u2146</mo><mi>x</mi></mrow></math>",
     url: "https://www.integral-calculator.com/#expr=x&intvar=x",
   },
   failed: {
@@ -72,6 +74,9 @@ const status = shadow.querySelector(".status");
 const chrome = { runtime: { sendMessage: async () => ({}) } };
 ${block("  function escape(text) {")}
 ${block("  const SYMBOLAB =", ";")}
+${block("  const MATHML_TAGS =", "]);")}
+${block("  const MATHML_ATTRS =", ");")}
+${block("  function mountMath(target, xml) {")}
 ${block("  function render(result) {")}
 ${block("  function showPanel(html, note")}
 function hidePanel() { panel.classList.remove("on"); }
