@@ -2,9 +2,8 @@
 //
 // The CSS, the markup and `render()` are pulled straight out of overlay.js by
 // pattern rather than copied, so the preview cannot drift from what ships.
-// Neither half of a prefers-color-scheme pair is reachable on demand from a
-// plain page, so the theme is chosen by deleting or promoting the dark block:
-// the values stay real, only the trigger is faked.
+// The theme is a data-theme attribute driven by page-background detection, so
+// the preview just sets it directly and renders the real CSS unmodified.
 //
 //     node scripts/preview-panel.js && python3 -m http.server -d .preview 8799
 //     open http://localhost:8799/panel-light.html?state=unverified
@@ -30,8 +29,6 @@ function block(signature, end = "\n  }") {
   return src.slice(start, src.indexOf(end, start) + end.length);
 }
 
-const DARK = /@media \(prefers-color-scheme: dark\) \{\s*(\.panel, \.layer \{[\s\S]*?\})\s*\}/;
-
 const RESULTS = {
   ok: {
     latex: "\\int \\frac{2x^{2}+7x-1}{x-4}dx",
@@ -53,9 +50,7 @@ const RESULTS = {
 };
 
 function build(theme) {
-  const css = grab("CSS")
-    .replace(":host { all: initial; }", "")
-    .replace(DARK, theme === "dark" ? "$1" : "");
+  const css = grab("CSS").replace(":host { all: initial; }", "");
 
   return `<!doctype html><meta charset="utf-8">
 <title>integrand panel — ${theme}</title>
@@ -78,8 +73,9 @@ const chrome = { runtime: { sendMessage: async () => ({}) } };
 ${block("  function escape(text) {")}
 ${block("  const SYMBOLAB =", ";")}
 ${block("  function render(result) {")}
-${block("  function showPanel(html, note", "\\n  }")}
+${block("  function showPanel(html, note")}
 function hidePanel() { panel.classList.remove("on"); }
+function pageIsDark() { return ${theme === "dark"}; }
 function open_(url) { console.log("would open", url); }
 const RESULTS = ${JSON.stringify(RESULTS)};
 const state = new URLSearchParams(location.search).get("state") || "ok";

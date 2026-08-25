@@ -14,19 +14,18 @@
   const CSS = `
     :host { all: initial; }
 
-    /* Light values live on bare :root so a page with no colour-scheme
-       preference still gets a complete palette. */
-    .panel, .layer {
-      --paper: #fbf7ef; --ink: #1f2224; --muted: #857658; --line: #ddd3c0;
-      --accent: #2f7d95; --accent-ink: #fff; --sunk: #f2ebde;
-      --bad: #a3341f; --good: #46722f;
+    /* The panel sits on the page, not in the browser chrome, so its theme
+       follows the page rather than the OS. data-theme is set from the measured
+       background; light is the default so a page we cannot read still works. */
+    .panel {
+      --paper: #fbf7ef; --ink: #1f2224; --muted: #7d6f52; --line: #ddd3c0;
+      --accent: #276a80; --accent-ink: #fff; --sunk: #f2ebde;
+      --bad: #9c3019; --good: #3f6a29;
     }
-    @media (prefers-color-scheme: dark) {
-      .panel, .layer {
-        --paper: #1b1e20; --ink: #e9e3d7; --muted: #948a78; --line: #343a3d;
-        --accent: #57a9c4; --accent-ink: #10181b; --sunk: #23272a;
-        --bad: #e0765c; --good: #93c07a;
-      }
+    .panel[data-theme="dark"] {
+      --paper: #191c1e; --ink: #f3eee4; --muted: #aba18e; --line: #414850;
+      --accent: #6cc0da; --accent-ink: #0c1518; --sunk: #0f1315;
+      --bad: #f2907a; --good: #a8d48c;
     }
 
     .backdrop { position: fixed; background: rgba(12, 18, 24, 0.45); z-index: 2147483646; }
@@ -50,21 +49,21 @@
     .head { display: flex; align-items: baseline; gap: 6px; margin-bottom: 7px; }
     .mark { font-size: 13px; color: var(--muted); letter-spacing: .03em; }
     .mark b { color: var(--ink); font-weight: 600; }
-    .status { margin-left: auto; font-size: 10.5px; letter-spacing: .04em;
-              color: var(--muted); font-variant: all-small-caps; }
+    .status { margin-left: auto; font-size: 11px; letter-spacing: .05em;
+              color: var(--muted); text-transform: lowercase; }
     .status.bad { color: var(--bad); }
     .status.good { color: var(--good); }
 
-    textarea { display: block; width: 100%; box-sizing: border-box; height: 42px;
-               resize: vertical; font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+    textarea { display: block; width: 100%; box-sizing: border-box; height: 44px;
+               resize: vertical; font: 11.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
                padding: 6px 7px; border: 1px solid var(--line); border-radius: 4px;
                background: var(--sunk); color: var(--ink); }
     textarea:focus { outline: 1px solid var(--accent); outline-offset: -1px; }
 
-    .infix { margin-top: 5px; font: 10.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+    .infix { margin-top: 5px; font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
              color: var(--muted); overflow: hidden; text-overflow: ellipsis;
              white-space: nowrap; }
-    .note { margin-top: 6px; font-size: 11px; color: var(--bad); }
+    .note { margin-top: 6px; font-size: 11.5px; color: var(--bad); }
 
     .row { display: flex; gap: 6px; align-items: center; margin-top: 9px; }
     button { font: inherit; font-size: 11.5px; line-height: 1; padding: 6px 10px;
@@ -72,7 +71,7 @@
              background: var(--accent); color: var(--accent-ink); cursor: pointer; }
     button.ghost { background: transparent; color: var(--accent); }
     button.icon { margin-left: auto; padding: 5px 8px; font-size: 13px; line-height: 1; }
-    button:disabled { opacity: .4; cursor: not-allowed; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
 
     .spinner { width: 11px; height: 11px; border: 2px solid var(--line);
                border-top-color: var(--accent); border-radius: 50%;
@@ -283,7 +282,40 @@
     hidePanel();
   }
 
+  function parseColor(value) {
+    const match = String(value).match(/rgba?\(([^)]+)\)/);
+    if (!match) return null;
+    const [r, g, b, a = 1] = match[1].split(/[,\s/]+/).filter(Boolean).map(Number);
+    return { r, g, b, a };
+  }
+
+  function luminance({ r, g, b }) {
+    const channel = (value) => {
+      const v = value / 255;
+      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+  }
+
+  //: Match the page, not the OS. A cream card is glaring on a dark page even
+  //: when the browser is in light mode, and the reverse is worse. Probe what
+  //: is actually behind the panel's own corner, then fall back outward: most
+  //: pages leave <body> transparent and paint on <html>, or neither.
+  //:
+  //: 0.2 is the relative luminance of a mid grey, so anything darker than
+  //: that gets the dark panel.
+  function pageIsDark() {
+    const corner = document.elementsFromPoint(innerWidth - 40, innerHeight - 40);
+    for (const element of [...corner, document.body, document.documentElement]) {
+      if (!element || element === host) continue;
+      const color = parseColor(getComputedStyle(element).backgroundColor);
+      if (color && color.a > 0.5) return luminance(color) < 0.2;
+    }
+    return matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+
   function showPanel(html, note = "", tone = "") {
+    panel.dataset.theme = pageIsDark() ? "dark" : "light";
     body.innerHTML = html;
     status.textContent = note;
     status.className = `status ${tone}`;
