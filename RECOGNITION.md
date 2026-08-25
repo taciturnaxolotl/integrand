@@ -12,11 +12,18 @@ free, and the accuracy question disappears.
 | source | selector | measured |
 |---|---|---|
 | KaTeX, MathJax v3, MathML | `annotation[encoding="application/x-tex"]`, visible host is `.katex` | 965 exact sources on katex.org/docs/supported |
-| MathJax v2 | `script[type^="math/tex"]`, preceding sibling is the drawn node | — |
+| MathJax v2 | `script[type^="math/tex"]`, drawn node is `<script id>-Frame` | 307 exact sources on one math.stackexchange question |
 | Wikipedia | `img[alt]`, alt holds `{\displaystyle …}` | 235 exact sources on one article |
 
 Wikipedia paints the MathML hidden and shows an `<img>`, so candidates must be
-filtered to nodes that actually have a box before geometry is used.
+filtered to nodes that actually have a box before geometry is used. MathJax v2
+needs the same care from the other direction: the script's previous sibling is
+a zero-size `.MathJax_Preview` placeholder, not the rendering, and reaching for
+it finds 333 of 397 expressions and measures none of them.
+
+MathJax v2 also typesets progressively — on a 397-expression page the frames
+appear over several seconds — which is why the page anchor retries before
+deciding a page has no maths.
 
 Resolving a crop to a source works: score each candidate by the fraction of its
 bounding box the crop covers and take the best above 0.5. Tested on Wikipedia

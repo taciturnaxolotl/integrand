@@ -50,7 +50,7 @@
     .mark { font-size: 13px; color: var(--muted); letter-spacing: .03em; }
     .mark b { color: var(--ink); font-weight: 600; }
     .status { margin-left: auto; font-size: 11px; letter-spacing: .05em;
-              color: var(--muted); text-transform: lowercase; }
+              color: var(--muted); }
     .status.bad { color: var(--bad); }
     .close { align-self: center; border: 0; background: none; color: var(--muted);
              font: 15px/1 ui-serif, Georgia, serif; padding: 0 1px; cursor: pointer; }
@@ -304,7 +304,8 @@
 
     // Silent when it worked: the rendered expression and the live buttons
     // already say so, and a permanent "verified" would only make the warnings
-    // easier to miss. "from page" is the exception — read, not guessed.
+    // easier to miss. Naming the typesetter is the exception — it says the
+    // LaTeX was read rather than guessed, and which reader got it.
     showPanel(`
       <div class="render hidden"></div>
       <div class="edit${blocked ? "" : " hidden"}">
@@ -318,7 +319,7 @@
         <button class="ghost sym">Symbolab</button>
         <button class="ghost icon pencil" title="Edit the LaTeX">&#9998;</button>
       </div>
-    `, failed ? "not converted" : unverified ? "unverified" : source ? "from page" : "",
+    `, failed ? "not converted" : unverified ? "unverified" : (source ?? ""),
        blocked ? "bad" : "");
 
     const rendered = body.querySelector(".render");

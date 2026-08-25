@@ -111,17 +111,25 @@ globalThis.integrandPageMath = (() => {
       }
     };
 
+    // All three arrive through the same annotation element; which typesetter
+    // wrapped it is the part worth reporting back.
     for (const annotation of document.querySelectorAll('annotation[encoding="application/x-tex"]')) {
-      const host = annotation.closest(".katex") || annotation.closest("math")?.parentElement;
-      if (host) add(host, annotation.textContent, "mathml");
+      const katex = annotation.closest(".katex");
+      const mathjax = annotation.closest("mjx-container");
+      const host = katex || mathjax || annotation.closest("math")?.parentElement;
+      if (host) add(host, annotation.textContent, katex ? "KaTeX" : mathjax ? "MathJax" : "MathML");
     }
+    // MathJax v2 leaves a zero-size .MathJax_Preview beside the script and puts
+    // the rendering in a separate span keyed `<script id>-Frame`. Reaching for
+    // the sibling finds the placeholder and measures nothing.
     for (const script of document.querySelectorAll('script[type^="math/tex"]')) {
-      if (script.previousElementSibling) {
-        add(script.previousElementSibling, script.textContent, "mathjax2");
-      }
+      const host =
+        (script.id && document.getElementById(`${script.id}-Frame`)) ||
+        script.previousElementSibling;
+      if (host) add(host, script.textContent, "MathJax");
     }
     for (const image of document.querySelectorAll("img[alt]")) {
-      if (/\\[a-zA-Z]/.test(image.alt)) add(image, image.alt, "img-alt");
+      if (/\\[a-zA-Z]/.test(image.alt)) add(image, image.alt, "alt text");
     }
     for (const line of document.querySelectorAll(".watexline")) {
       add(line, watexToLatex(line), "watex");
