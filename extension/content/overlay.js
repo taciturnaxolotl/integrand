@@ -236,6 +236,7 @@
     hovered = null;
     refreshKnown();
     layer.classList.add("on");
+    globalThis.integrandAnchor?.setCropping(true);
     paint();
   }
 
@@ -245,6 +246,7 @@
     hovered = null;
     origin = null;
     layer.style.cursor = "crosshair";
+    globalThis.integrandAnchor?.setCropping(false);
   }
 
   addEventListener("scroll", () => layer.classList.contains("on") && refreshKnown(), true);
@@ -319,9 +321,12 @@
 
     // The overlay must be off-screen *and painted* before the capture, or it
     // lands in the screenshot. Two frames is the reliable way to know that.
+    // The anchor is not part of the overlay, so it has to be told separately.
+    globalThis.integrandAnchor?.setHidden(true);
     await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
 
     const { dataUrl, error } = await chrome.runtime.sendMessage({ type: "capture" });
+    globalThis.integrandAnchor?.setHidden(false);
     if (error) {
       return showPanel(`<div class="note">Could not capture the tab: ${escape(error)}</div>`, "failed", "bad");
     }
@@ -518,6 +523,13 @@
   }
 
   shadow.querySelector(".close").addEventListener("click", hidePanel);
+
+  //: Shared with the anchor, which offers the way out of a selection it did
+  //: not start and cannot see.
+  globalThis.integrandOverlay = {
+    cropping: () => layer.classList.contains("on"),
+    cancel: stop,
+  };
 
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === "start-crop") start();

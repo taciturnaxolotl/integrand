@@ -26,25 +26,55 @@
       transition: opacity .15s ease, transform .15s ease;
     }
     .anchor:hover, .anchor:focus-visible { opacity: 1; transform: translateX(0); }
-    .anchor.busy { opacity: 0; pointer-events: none; }
+    /* While a selection is running it is the way out of one, so it stops
+       hiding and says so. The overlay's backdrops sit above the resting
+       z-index, so it has to come up or it cannot be clicked. */
+    .anchor.cropping { opacity: 1; transform: translateX(0); z-index: 2147483647; }
+    .anchor svg { display: block; }
   `;
+
+  const MARK = "∫";
+  const CANCEL =
+    `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"` +
+    ` stroke-width="2.5" stroke-linecap="round" aria-hidden="true">` +
+    `<path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`;
 
   const host = document.createElement("div");
   host.id = HOST_ID;
   const shadow = host.attachShadow({ mode: "closed" });
   shadow.innerHTML =
     `<style>${CSS}</style>` +
-    `<button class="anchor" title="Snip a maths problem (integrand)">∫</button>`;
+    `<button class="anchor" title="Snip a maths problem (integrand)">${MARK}</button>`;
 
   const button = shadow.querySelector(".anchor");
 
   button.addEventListener("click", () => {
-    // Out of the way before the capture — the overlay hides itself, but this
-    // button is not part of it.
-    button.classList.add("busy");
+    // Mid-selection the button means "stop", and that is a local matter — no
+    // need to trouble the worker to undo something it never started.
+    if (globalThis.integrandOverlay?.cropping()) {
+      globalThis.integrandOverlay.cancel();
+      return;
+    }
     chrome.runtime.sendMessage({ type: "start-crop-here" });
-    setTimeout(() => button.classList.remove("busy"), 2500);
   });
+
+  //: The overlay drives these. It cannot reach inside a closed shadow root, and
+  //: the anchor is not part of the overlay, so the two talk through the shared
+  //: content-script global rather than through the page.
+  globalThis.integrandAnchor = {
+    setCropping(on) {
+      // 2147483647 is the ceiling, so a tie with the overlay is broken by
+      // document order: last one wins.
+      if (on) document.documentElement.append(host);
+      button.classList.toggle("cropping", on);
+      button.innerHTML = on ? CANCEL : MARK;
+      button.title = on ? "Cancel the selection (Esc)" : "Snip a maths problem (integrand)";
+    },
+    // Hidden only for the instant of the capture, or it lands in the shot.
+    setHidden(on) {
+      host.style.display = on ? "none" : "";
+    },
+  };
 
   function pageHasMaths() {
     try {

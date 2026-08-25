@@ -39,7 +39,9 @@ each one a site the page reader can read directly rather than photograph. Even
 there the button only appears on pages where it actually finds maths, so a
 course's login page stays clean while its homework pages do not.
 
-Toggle any of them off in the options page. To add a site that isn't listed,
+During a selection the button becomes the way out of one: it stays put, turns
+into a cross, and cancels — as does <kbd>Esc</kbd>. Toggle any site off in the
+options page. To add a site that isn't listed,
 open it and **right-click the toolbar icon**.
 
 The extension only ever talks to the service, so swapping OCR backends does not
