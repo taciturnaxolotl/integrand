@@ -22,6 +22,12 @@ Then load `extension/` unpacked: `chrome://extensions` → developer mode →
 **Load unpacked**. Drag over a problem, check what it read, hit **Open
 calculator**.
 
+A beat after the result, the panel names the technique the problem wants — *try
+a substitution*, *integration by parts* — with the giveaway (*u = ln(x)*) behind
+a click. It comes from sympy's `integral_steps` rule tree, so it is a decision a
+CAS actually made rather than a sentence a model produced, and it cannot be
+confidently wrong.
+
 Where the page knows its own maths, expressions light up as you move over them
 and one click takes the whole thing — no rectangle to drag. Everything else
 still crops.

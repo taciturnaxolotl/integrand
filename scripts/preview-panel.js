@@ -71,7 +71,8 @@ const shadow = document;
 const panel = shadow.querySelector(".panel");
 const body = shadow.querySelector(".body");
 const status = shadow.querySelector(".status");
-const chrome = { runtime: { sendMessage: async () => ({}) } };
+const chrome = { runtime: { sendMessage: async (m) =>
+  m.type === "hint" ? { hint: { technique: "a substitution", detail: "u = ln(x)" } } : {} } };
 ${block("  const MINIMUM_WAIT =", ";")}
 ${block("  function atLeast(work, ms = MINIMUM_WAIT) {")}
 ${block("  function escape(text) {")}
@@ -79,6 +80,7 @@ ${block("  const icon = (paths) =>", ";")}
 ${block("  const COPY_ICON = icon(", ");")}
 ${block("  const DONE_ICON = icon(", ");")}
 ${block("  async function copyText(text) {")}
+${block("  async function offerHint(slot, latex) {")}
 ${block("  const SYMBOLAB =", ";")}
 ${block("  const MATHML_TAGS =", "]);")}
 ${block("  const MATHML_ATTRS =", ");")}

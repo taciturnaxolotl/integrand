@@ -20,11 +20,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from . import hint as hints
 from . import ocr
-from .convert import ConvertError, convert
+from .convert import ConvertError, convert, parse
 
 MAX_BODY_BYTES = 2 * 1024 * 1024
 OCR_TIMEOUT_SECONDS = 15.0
+
+#: Working out the technique is CPU-bound sympy and occasionally slow — six
+#: seconds on the worst real problem measured. It shares the OCR cap so a burst
+#: cannot take the box down, and gives up rather than holding a worker.
+HINT_TIMEOUT_SECONDS = 6.0
 
 #: Cap in-flight OCR below the core count. Rate limiting alone will not save a
 #: small box: one slow queue is enough to exhaust it.
@@ -54,6 +60,10 @@ class SnipRequest(BaseModel):
 
 
 class ConvertRequest(BaseModel):
+    latex: str
+
+
+class HintRequest(BaseModel):
     latex: str
 
 
@@ -94,6 +104,24 @@ def convert_endpoint(body: ConvertRequest) -> JSONResponse:
         payload["ms"] = {"convert": round((time.perf_counter() - started) * 1000)}
         return JSONResponse(content=payload)
     return response
+
+
+@app.post("/v1/hint")
+async def hint_endpoint(body: HintRequest) -> JSONResponse:
+    """The technique, in two parts. Never on the path to a result."""
+    try:
+        expression = parse(body.latex)
+    except ConvertError as exc:
+        return JSONResponse(status_code=422, content={"error": exc.code, "detail": exc.detail})
+
+    async with _semaphore:
+        try:
+            found = await asyncio.wait_for(
+                asyncio.to_thread(hints.describe, expression), timeout=HINT_TIMEOUT_SECONDS
+            )
+        except asyncio.TimeoutError:
+            return JSONResponse(content={"hint": None, "reason": "took too long"})
+    return JSONResponse(content={"hint": found.as_dict() if found else None})
 
 
 @app.post("/v1/snip")

@@ -246,6 +246,13 @@ def _build_url(
     return base + "&".join(f"{k}={quote(v, safe='')}" for k, v in params)
 
 
+def parse(latex: str):
+    """Normalise and parse, with the constants canonicalised. Raises ConvertError."""
+    cleaned = normalize(latex)
+    _reject_implicit_words(cleaned)
+    return _parse(cleaned)
+
+
 def convert(latex: str, hint: str | None = None) -> Result:
     cleaned = normalize(latex)
     _reject_implicit_words(cleaned)

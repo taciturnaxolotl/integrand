@@ -91,6 +91,15 @@
 
     .note { margin-top: 6px; font-size: 11.5px; color: var(--bad); }
 
+    /* Always here, usually empty: the technique arrives a beat after the
+       result and the panel should not jump when it does. */
+    .hint { min-height: 17px; margin-top: 6px; font-size: 11.5px; color: var(--muted); }
+    .hint button { font: inherit; padding: 0; border: 0; background: none;
+                   color: var(--accent); cursor: pointer; text-decoration: underline;
+                   text-underline-offset: 2px; }
+    .hint .give { color: var(--ink);
+                  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
     .row { display: flex; gap: 6px; align-items: center; margin-top: 9px; }
     /* Scoped to the action row. The close button sits in the header and styles
        itself. Left unscoped, a hover rule on plain "button" outscores one on
@@ -427,6 +436,7 @@
     showPanel(`
       <div class="render hidden"></div>
       ${failed ? `<div class="latex">${escape(latex)}</div>` : ""}
+      ${blocked ? "" : `<div class="hint"></div>`}
       ${failed ? `<div class="note">${escape(result.detail || result.error)}</div>` : ""}
       ${unverified ? `<div class="note">Reading this back did not give the same expression, so the link may solve something else. The copied form is still what would be sent.</div>` : ""}
       <div class="row">
@@ -439,6 +449,7 @@
 
     const rendered = body.querySelector(".render");
     if (result.mathml && mountMath(rendered, result.mathml)) rendered.classList.remove("hidden");
+    if (!blocked) offerHint(body.querySelector(".hint"), latex);
 
     body.querySelector(".go")?.addEventListener("click", () => open_(result.url));
 
@@ -461,6 +472,27 @@
   // button, or the next capture take it down.
   function open_(url) {
     chrome.runtime.sendMessage({ type: "open", url });
+  }
+
+  // The technique, in two goes. Naming it is a nudge; saying what u is has
+  // done the problem, so that waits to be asked for.
+  async function offerHint(slot, latex) {
+    const reply = await chrome.runtime.sendMessage({ type: "hint", latex });
+    const found = reply?.hint;
+    if (!found || !slot.isConnected) return;
+
+    slot.textContent = `Try ${found.technique}. `;
+    if (!found.detail) return;
+
+    const more = document.createElement("button");
+    more.textContent = "show me";
+    more.addEventListener("click", () => {
+      const give = document.createElement("span");
+      give.className = "give";
+      give.textContent = found.detail;
+      more.replaceWith(give);
+    });
+    slot.append(more);
   }
 
   // The clipboard API needs a focused document; a page that steals focus back

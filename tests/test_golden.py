@@ -275,3 +275,39 @@ def test_plus_survives_encoding():
 def test_variable_is_reported():
     assert convert(r"\int t^2 dt").var == "t"
     assert convert(r"\frac{\partial}{\partial y}(x y^2)").var == "y"
+
+
+#: Naming the technique is a nudge; saying what u is has done the problem.
+HINTS = [
+    (r"\int \frac{(\ln(x))^4}{x} dx", "a substitution", "u = ln(x)"),
+    (r"\int x\sin(x) dx", "integration by parts", "u = x, dv = sin(x)"),
+    (r"\int \frac{\cos(t)}{4+\sin(t)} dt", "a substitution", "u = sin(t) + 4"),
+    (r"\int x^3 dx", "a standard form, no technique needed", None),
+    # routing shapes are unwrapped the same way convert unwraps them
+    (r"F(x) = \int_0^x 4\tan(t) dt", "a substitution", "u = cos(t)"),
+    # derivatives are read off the shape; there is no manualdiff to ask
+    (r"\frac{d}{dx}(x^2\sin(x))", "the product rule", None),
+    (r"\frac{d}{dx}(\frac{x}{x+1})", "the quotient rule", None),
+    (r"\frac{d}{dx}(\sin(x^2))", "the chain rule", None),
+]
+
+
+@pytest.mark.parametrize("latex,technique,detail", HINTS, ids=[c[0] for c in HINTS])
+def test_hint(latex, technique, detail):
+    from integrand import hint
+    from integrand.convert import parse
+
+    found = hint.describe(parse(latex))
+    assert found is not None
+    assert found.technique == technique
+    assert found.detail == detail
+
+
+def test_a_hint_never_hands_over_the_answer():
+    """The nudge and the giveaway stay in separate fields."""
+    from integrand import hint
+    from integrand.convert import parse
+
+    found = hint.describe(parse(r"\int \frac{(\ln(x))^4}{x} dx"))
+    assert "ln" not in found.technique
+    assert found.detail and "ln" in found.detail

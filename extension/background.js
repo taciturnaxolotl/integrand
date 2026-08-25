@@ -138,6 +138,11 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     return true;
   }
 
+  if (message.type === "hint") {
+    post("/v1/hint", { latex: message.latex }).then(respond);
+    return true;
+  }
+
   if (message.type === "open") {
     openResult(message.url).then(() => respond({ ok: true }));
     return true;
