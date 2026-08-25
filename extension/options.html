@@ -1,0 +1,26 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>integrand options</title>
+<style>
+  body { font: 14px/1.6 ui-serif, Georgia, "Times New Roman", serif;
+         max-width: 34em; margin: 3em auto; padding: 0 1.5em; color: #1b1d1e; background: #fbf7ef; }
+  h1 { font-size: 1.3em; letter-spacing: .02em; }
+  label { display: block; margin: 1.5em 0 .4em; font-size: 11px;
+          letter-spacing: .06em; text-transform: uppercase; color: #7a6a53; }
+  input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #cfc4ae;
+          border-radius: 4px; font: 13px ui-monospace, SFMono-Regular, Menlo, monospace;
+          background: #fffdf8; }
+  button { margin-top: 1.2em; font: inherit; font-size: 13px; padding: 7px 16px;
+           border: 1px solid #1d4e63; border-radius: 4px; background: #2f7d95;
+           color: #fff; cursor: pointer; }
+  p { color: #5a5145; }
+  .saved { color: #3f6b34; margin-left: .8em; }
+</style>
+<h1>integrand</h1>
+<label for="endpoint">Service endpoint</label>
+<input id="endpoint" spellcheck="false">
+<p>Point this at your own box to stop using someone else's compute. The
+manifest only grants access to localhost, so a remote endpoint needs a
+matching <code>host_permissions</code> entry.</p>
+<button id="save">Save</button><span class="saved" id="saved"></span>
+<script src="options.js"></script>

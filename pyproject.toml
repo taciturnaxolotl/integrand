@@ -24,3 +24,7 @@ dev = [
 ocr = [
     "pix2tex>=0.1.4",
 ]
+service = [
+    "fastapi>=0.141.1",
+    "uvicorn>=0.52.4",
+]
