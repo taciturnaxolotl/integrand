@@ -14,7 +14,6 @@
   const CSS = `
     :host { all: initial; }
     .backdrop { position: fixed; background: rgba(12, 18, 24, 0.45); z-index: 2147483646; }
-    .backdrop.top, .backdrop.bottom { height: 0; }
     .backdrop.left { top: 0; bottom: 0; left: 0; width: 0; }
     .backdrop.right { top: 0; bottom: 0; right: 0; left: 0; }
     .crop { position: fixed; z-index: 2147483647; border: 1px solid #6fd3f2;
@@ -85,16 +84,26 @@
   let box = { x1: 0, y1: 0, x2: 0, y2: 0 };
   let dragging = false;
 
+  //: The drag runs in any direction, so the live rect is the ordered box.
+  //: Without this a leftward drag computes a negative width, the CSS parser
+  //: throws the declaration away, and the overlay freezes mid-drag.
+  function bounds() {
+    return {
+      x1: Math.min(box.x1, box.x2), x2: Math.max(box.x1, box.x2),
+      y1: Math.min(box.y1, box.y2), y2: Math.max(box.y1, box.y2),
+    };
+  }
+
   // Four backdrop panels rather than an SVG mask: fewer moving parts, and the
-  // hole is always exactly the crop rect.
+  // hole is always exactly the crop rect. Every edge that positioning depends
+  // on is written on every paint — leaving `height` to the stylesheet while
+  // setting `top` and `bottom` here over-constrains the box, and CSS resolves
+  // that by keeping the height and dropping the bottom.
   function paint() {
-    const { x1, y1, x2, y2 } = box;
-    Object.assign(edges.top.style, {
-      left: `${x1}px`, width: `${x2 - x1}px`, top: "0px", height: `${y1}px`,
-    });
-    Object.assign(edges.bottom.style, {
-      left: `${x1}px`, width: `${x2 - x1}px`, top: `${y2}px`, bottom: "0px",
-    });
+    const { x1, y1, x2, y2 } = bounds();
+    const column = { left: `${x1}px`, width: `${x2 - x1}px` };
+    Object.assign(edges.top.style, { ...column, top: "0px", height: `${y1}px` });
+    Object.assign(edges.bottom.style, { ...column, top: `${y2}px`, height: "auto", bottom: "0px" });
     edges.left.style.width = `${x1}px`;
     edges.right.style.left = `${x2}px`;
     crop.classList.toggle("hidden", !dragging);
@@ -133,12 +142,8 @@
   layer.addEventListener("mouseup", async (event) => {
     if (!dragging) return;
     dragging = false;
-    const rect = {
-      x: Math.min(box.x1, event.clientX),
-      y: Math.min(box.y1, event.clientY),
-      w: Math.abs(event.clientX - box.x1),
-      h: Math.abs(event.clientY - box.y1),
-    };
+    const { x1, y1, x2, y2 } = bounds();
+    const rect = { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
     stop();
     if (rect.w < 10 || rect.h < 10) return; // a stray click, not a drag
     await submit(rect);
