@@ -28,21 +28,26 @@ const SNIP_MENU = "integrand-snip";
 const KEEP_MENU = "integrand-keep";
 const ANCHOR_SCRIPT = "integrand-anchor";
 
+//: Snipping belongs on the page, where you are pointing at a problem.
+//: Adding a site is settings, so it hangs off the toolbar icon instead —
+//: right-clicking the icon is where you look for what an extension can do,
+//: and it keeps the page menu to the one thing you actually want there.
 function installMenus() {
   chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({ id: SNIP_MENU, title: "Snip this maths problem", contexts: ["all"] });
-    chrome.contextMenus.create({ id: KEEP_MENU, title: "Show the integrand button on this site", contexts: ["all"] });
+    chrome.contextMenus.create({ id: SNIP_MENU, title: "Snip this maths problem", contexts: ["page", "selection", "image"] });
+    chrome.contextMenus.create({ id: KEEP_MENU, title: "Show the ∫ on this site…", contexts: ["action"] });
   });
 }
 
+//: The host travels in session storage rather than the URL so that
+//: openOptionsPage can be used — it already focuses an existing options tab
+//: instead of piling up new ones, and querying tabs by URL would mean asking
+//: for the "tabs" permission just to find our own page.
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === SNIP_MENU) startCrop(tab);
-  if (info.menuItemId === KEEP_MENU && tab?.url?.startsWith("http")) {
-    chrome.tabs.create({
-      url: chrome.runtime.getURL(
-        `options.html?host=${encodeURIComponent(new URL(tab.url).host)}`
-      ),
-    });
+  if (info.menuItemId === KEEP_MENU) {
+    const host = tab?.url?.startsWith("http") ? new URL(tab.url).host : "";
+    chrome.storage.session.set({ pendingHost: host }).then(() => chrome.runtime.openOptionsPage());
   }
 });
 

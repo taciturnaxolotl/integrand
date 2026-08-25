@@ -1,64 +1,158 @@
 <!doctype html>
 <meta charset="utf-8">
-<title>integrand options</title>
+<title>integrand</title>
 <style>
+  /* One palette, both schemes. Warm paper and a single cold accent — the
+     accent is scarce on purpose, so the few things that are actionable read
+     as actionable. */
   :root {
-    --paper: #fbf7ef; --ink: #1f2224; --muted: #7d6f52; --line: #ddd3c0;
-    --accent: #276a80; --accent-ink: #fff; --sunk: #f2ebde; --good: #3f6a29;
+    color-scheme: light dark;
+    --paper:  oklch(97.5% 0.014 85);
+    --raised: oklch(99% 0.008 85);
+    --sunk:   oklch(94.5% 0.018 85);
+    --ink:    oklch(24% 0.012 60);
+    --muted:  oklch(52% 0.020 70);
+    --line:   oklch(88% 0.018 80);
+    --accent: oklch(48% 0.075 225);
+    --accent-ink: oklch(99% 0 0);
+    --good:   oklch(52% 0.105 145);
+    --shadow: 0 1px 2px oklch(24% 0.012 60 / 0.06), 0 8px 24px oklch(24% 0.012 60 / 0.06);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --paper: #191c1e; --ink: #f3eee4; --muted: #aba18e; --line: #414850;
-      --accent: #6cc0da; --accent-ink: #0c1518; --sunk: #0f1315; --good: #a8d48c;
+      --paper:  oklch(19% 0.012 250);
+      --raised: oklch(23% 0.013 250);
+      --sunk:   oklch(16% 0.012 250);
+      --ink:    oklch(94% 0.012 85);
+      --muted:  oklch(68% 0.020 80);
+      --line:   oklch(32% 0.014 250);
+      --accent: oklch(78% 0.095 220);
+      --accent-ink: oklch(18% 0.02 240);
+      --good:   oklch(80% 0.130 145);
+      --shadow: 0 1px 2px oklch(0% 0 0 / 0.3), 0 10px 30px oklch(0% 0 0 / 0.28);
     }
   }
-  body { font: 15px/1.65 ui-serif, Georgia, "Times New Roman", serif;
-         max-width: 36em; margin: 3em auto 5em; padding: 0 1.5em;
-         color: var(--ink); background: var(--paper); }
-  h1 { font-size: 1.35em; margin: 0 0 .2em; letter-spacing: .01em; }
-  h1 span { color: var(--muted); font-weight: normal; }
-  h2 { font-size: .78em; letter-spacing: .09em; text-transform: uppercase;
-       color: var(--muted); margin: 2.4em 0 .6em; font-weight: 600; }
-  p { color: var(--muted); margin: .5em 0; }
-  input { width: 100%; box-sizing: border-box; padding: 8px 10px;
-          border: 1px solid var(--line); border-radius: 4px; background: var(--sunk);
-          color: var(--ink); font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
-  button { font: inherit; font-size: 13px; padding: 7px 14px; border-radius: 4px;
-           border: 1px solid var(--accent); background: var(--accent);
-           color: var(--accent-ink); cursor: pointer; }
-  button.ghost { background: transparent; color: var(--accent); }
-  button.quiet { border-color: var(--line); background: transparent; color: var(--muted);
-                 padding: 4px 9px; font-size: 12px; }
-  .row { display: flex; gap: 10px; align-items: center; margin-top: .9em; }
-  .said { color: var(--good); font-size: 13px; }
-  ul { list-style: none; padding: 0; margin: .6em 0 0; }
-  li { display: flex; align-items: center; gap: 10px; padding: 7px 0;
-       border-bottom: 1px solid var(--line); }
-  li code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; flex: 1; }
-  li button { margin-left: auto; }
-  .empty { color: var(--muted); font-style: italic; }
-  kbd { font: 12px ui-monospace, Menlo, monospace; border: 1px solid var(--line);
-        border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px; background: var(--sunk); }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 5rem 1.5rem 7rem; background: var(--paper); color: var(--ink);
+    font: 16px/1.6 ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 38rem; margin: 0 auto; }
+
+  header { display: flex; align-items: baseline; gap: .6rem; margin-bottom: .3rem; }
+  .glyph { font-size: 2.1rem; line-height: 1; color: var(--accent); }
+  h1 { font-size: 1.75rem; font-weight: 600; letter-spacing: -0.015em; margin: 0; }
+  .tagline { color: var(--muted); margin: 0 0 3.5rem; font-size: 1.02rem; }
+
+  section { margin-bottom: 3.5rem; }
+  h2 {
+    font: 600 0.72rem/1 ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: .13em; text-transform: uppercase; color: var(--muted);
+    margin: 0 0 .55rem; display: flex; align-items: center; gap: .9rem;
+  }
+  h2::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .lede { color: var(--muted); margin: 0 0 1.4rem; font-size: .95rem; }
+
+  .card {
+    background: var(--raised); border: 1px solid var(--line);
+    border-radius: 12px; box-shadow: var(--shadow); overflow: hidden;
+  }
+  .card + .card { margin-top: 1rem; }
+
+  .site {
+    display: flex; align-items: center; gap: 1rem;
+    padding: .85rem 1.1rem; border-top: 1px solid var(--line);
+  }
+  .site:first-child { border-top: 0; }
+  .site .host {
+    flex: 1; min-width: 0; font: .9rem/1.4 ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .site .note { font-size: .82rem; color: var(--muted); }
+
+  button {
+    font: 500 .85rem/1 ui-sans-serif, system-ui, sans-serif;
+    padding: .5rem .9rem; border-radius: 7px; cursor: pointer;
+    border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+    transition: opacity .12s ease, background .12s ease, border-color .12s ease;
+  }
+  button:hover { opacity: .87; }
+  button.quiet {
+    background: transparent; color: var(--muted); border-color: var(--line);
+  }
+  button.quiet:hover { color: var(--ink); border-color: var(--muted); opacity: 1; }
+  /* Solid accent is reserved for the one primary action in view, so the
+     suggestion list does not read as seven equally urgent buttons. */
+
+  .empty { padding: 1.3rem 1.1rem; color: var(--muted); font-size: .93rem; }
+
+  .field { display: flex; gap: .7rem; align-items: center; }
+  input {
+    flex: 1; padding: .62rem .75rem; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--sunk); color: var(--ink);
+    font: .88rem ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+  }
+  input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .said { color: var(--good); font-size: .85rem; min-width: 3rem; }
+
+  kbd {
+    font: .8rem ui-monospace, "SF Mono", Menlo, monospace; padding: .1rem .38rem;
+    border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px;
+    background: var(--sunk); color: var(--ink);
+  }
+
+  /* The banner only exists when you arrived from the icon menu. */
+  .offer {
+    display: flex; align-items: center; gap: 1rem; margin-bottom: 1.4rem;
+    padding: 1rem 1.1rem; border-radius: 12px;
+    border: 1px solid var(--accent); background: var(--sunk);
+  }
+  .offer .host { flex: 1; font: .95rem ui-monospace, "SF Mono", Menlo, monospace; }
+  .offer[hidden] { display: none; }
 </style>
 
-<h1>integrand <span>options</span></h1>
+<main>
+  <header>
+    <span class="glyph">∫</span>
+    <h1>integrand</h1>
+  </header>
+  <p class="tagline">Snip a maths problem, land on a step-by-step solver with it filled in.</p>
 
-<h2>Service endpoint</h2>
-<input id="endpoint" spellcheck="false">
-<p>Point this at your own box to stop using someone else's compute. The manifest
-grants access to localhost only, so a remote endpoint needs a matching
-<code>host_permissions</code> entry.</p>
-<div class="row"><button id="save">Save</button><span class="said" id="saved"></span></div>
+  <section>
+    <h2>Where the ∫ appears</h2>
+    <p class="lede">
+      On these sites a small <b>∫</b> waits at the right edge — and only on pages
+      where it actually finds maths, so a login page stays clean. Snipping works
+      everywhere regardless: the toolbar button, <kbd>⌘⇧Y</kbd>, or right-click →
+      <i>Snip this maths problem</i>.
+    </p>
 
-<h2>Sites with the button</h2>
-<p>On these sites a small <b>∫</b> sits on the right edge — but only on pages
-where it actually finds maths, so a login page stays clean. Everywhere else,
-snipping still works from the toolbar button, the right-click menu, or
-<kbd>⌘⇧Y</kbd>.</p>
-<div class="row" id="offer" hidden>
-  <button id="grant"></button>
-  <span class="said" id="granted"></span>
-</div>
-<ul id="sites"></ul>
+    <div class="offer" id="offer" hidden>
+      <span class="host" id="offer-host"></span>
+      <span class="said" id="offer-said"></span>
+      <button id="grant">Add this site</button>
+    </div>
+
+    <div class="card" id="enabled"></div>
+
+    <h2 style="margin-top:2.2rem">Suggestions</h2>
+    <p class="lede">Nothing here is on until you add it. To add a site that
+      isn't listed, open it and right-click the toolbar icon.</p>
+    <div class="card" id="suggested"></div>
+  </section>
+
+  <section>
+    <h2>Service</h2>
+    <p class="lede">Where images and LaTeX are sent. Point this at your own box
+      and you stop using anyone else's compute.</p>
+    <div class="field">
+      <input id="endpoint" spellcheck="false" aria-label="Service endpoint">
+      <button id="save">Save</button>
+      <span class="said" id="saved"></span>
+    </div>
+  </section>
+</main>
 
 <script src="options.js"></script>

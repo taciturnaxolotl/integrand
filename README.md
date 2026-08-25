@@ -29,12 +29,14 @@ Four ways to start a snip:
 - right-click → **Snip this maths problem**
 - the **∫** on the right edge, on sites you have opted into
 
-The last one is off by default. Right-click → **Show the integrand button on
-this site** grants that one origin, and even then the button only appears on
-pages where the reader actually finds maths — so a course's login page stays
-clean while its homework pages do not. Remove sites from the options page, or
-from Chrome's own permissions UI; the registration follows the grant either
-way.
+The last one is off by default and granted per origin. The options page lists
+a handful of suggestions — nothing there is on until you click it — and to add
+a site that isn't listed, open it and **right-click the toolbar icon**. Even on
+a granted site the button only appears on pages where the reader actually finds
+maths, so a course's login page stays clean while its homework pages do not.
+
+Remove sites from the options page or from Chrome's own permissions UI; the
+content-script registration is derived from the grants, so it follows either.
 
 The extension only ever talks to the service, so swapping OCR backends does not
 touch it. Before it captures anything it asks the page whether it already knows

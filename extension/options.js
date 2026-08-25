@@ -1,87 +1,143 @@
-const field = document.getElementById("endpoint");
-const saved = document.getElementById("saved");
-const sites = document.getElementById("sites");
-const offer = document.getElementById("offer");
-const grant = document.getElementById("grant");
-const granted = document.getElementById("granted");
-
 const DEFAULT_ENDPOINT = "http://localhost:8765";
 
-//: The manifest's own localhost grants show up here too; they are the service,
-//: not a site the button belongs on.
+//: Suggestions only — nothing here is granted until it is clicked. Chosen
+//: because the page reader can already read them exactly: WebAssign's watex,
+//: and KaTeX or MathJax everywhere else.
+const SUGGESTED = [
+  { origin: "*://*.webassign.net/*", note: "watex, read exactly" },
+  { origin: "*://*.myopenmath.com/*", note: "MathJax" },
+  { origin: "*://*.instructure.com/*", note: "Canvas" },
+  { origin: "*://*.deltamath.com/*", note: "" },
+  { origin: "*://*.gradescope.com/*", note: "" },
+  { origin: "*://*.khanacademy.org/*", note: "KaTeX" },
+  { origin: "*://en.wikipedia.org/*", note: "LaTeX in image alt text" },
+  { origin: "*://math.stackexchange.com/*", note: "MathJax" },
+  { origin: "*://openstax.org/*", note: "MathML" },
+];
+
+//: The manifest's own localhost grants land in permissions.getAll() too; they
+//: are the service, not a site the button belongs on.
 const isSite = (origin) => !/localhost|127\.0\.0\.1/.test(origin);
-const pattern = (host) => `*://${host}/*`;
-const hostOf = (origin) => origin.replace(/^\*:\/\//, "").replace(/\/\*$/, "");
+const label = (origin) => origin.replace(/^\*:\/\//, "").replace(/\/\*$/, "");
+const patternFor = (host) => `*://${host}/*`;
 
-chrome.storage.local.get("endpoint").then(({ endpoint }) => {
-  field.value = endpoint || DEFAULT_ENDPOINT;
-});
+const enabledCard = document.getElementById("enabled");
+const suggestedCard = document.getElementById("suggested");
+const offer = document.getElementById("offer");
 
-document.getElementById("save").addEventListener("click", async () => {
-  await chrome.storage.local.set({ endpoint: field.value.trim() || DEFAULT_ENDPOINT });
-  saved.textContent = "saved";
-  setTimeout(() => (saved.textContent = ""), 1500);
-});
+function row(origin, note, action) {
+  const line = document.createElement("div");
+  line.className = "site";
 
-async function paintSites() {
+  const host = document.createElement("span");
+  host.className = "host";
+  host.textContent = label(origin);
+
+  line.append(host);
+  if (note) {
+    const hint = document.createElement("span");
+    hint.className = "note";
+    hint.textContent = note;
+    line.append(hint);
+  }
+  line.append(action);
+  return line;
+}
+
+function actionButton(text, quiet, onClick) {
+  const button = document.createElement("button");
+  button.textContent = text;
+  if (quiet) button.className = "quiet";
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+async function resync() {
+  await chrome.runtime.sendMessage({ type: "sync-anchor-sites" });
+  paint();
+}
+
+async function paint() {
   const all = await chrome.permissions.getAll();
-  const origins = (all.origins ?? []).filter(isSite).sort();
+  const granted = (all.origins ?? []).filter(isSite).sort();
 
-  sites.replaceChildren();
-  if (!origins.length) {
-    const empty = document.createElement("li");
+  enabledCard.replaceChildren();
+  if (!granted.length) {
+    const empty = document.createElement("div");
     empty.className = "empty";
-    empty.textContent = "None yet — add one from the right-click menu on any page.";
-    sites.append(empty);
-    return;
+    empty.textContent = "No sites yet. Add one below, or right-click the toolbar icon on any page.";
+    enabledCard.append(empty);
+  } else {
+    for (const origin of granted) {
+      enabledCard.append(
+        row(origin, "", actionButton("Remove", true, async () => {
+          await chrome.permissions.remove({ origins: [origin] });
+          resync();
+        }))
+      );
+    }
   }
 
-  for (const origin of origins) {
-    const row = document.createElement("li");
-    const name = document.createElement("code");
-    name.textContent = hostOf(origin);
-    const remove = document.createElement("button");
-    remove.className = "quiet";
-    remove.textContent = "Remove";
-    remove.addEventListener("click", async () => {
-      await chrome.permissions.remove({ origins: [origin] });
-      await chrome.runtime.sendMessage({ type: "sync-anchor-sites" });
-      paintSites();
-    });
-    row.append(name, remove);
-    sites.append(row);
+  const remaining = SUGGESTED.filter((s) => !granted.includes(s.origin));
+  suggestedCard.replaceChildren();
+  if (!remaining.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "All of them are on.";
+    suggestedCard.append(empty);
+    return;
+  }
+  for (const { origin, note } of remaining) {
+    suggestedCard.append(
+      row(origin, note, actionButton("Add", true, async () => {
+        if (await chrome.permissions.request({ origins: [origin] })) resync();
+      }))
+    );
   }
 }
 
-//: Asking for a host permission needs an extension page and a real click.
-//: A content script has neither, which is why the right-click menu sends the
-//: host here rather than requesting it where the user was standing.
-async function offerCurrentHost() {
-  const host = new URLSearchParams(location.search).get("host");
+//: Asking for a host permission needs an extension page and a real click. A
+//: content script has neither, which is why the icon menu sends the host here
+//: rather than requesting it where you were standing.
+async function offerHostFromMenu() {
+  const { pendingHost: host } = await chrome.storage.session.get("pendingHost");
+  await chrome.storage.session.remove("pendingHost");
   if (!host) return;
 
-  const origins = [pattern(host)];
+  const origins = [patternFor(host)];
+  const said = document.getElementById("offer-said");
+  const grant = document.getElementById("grant");
+  document.getElementById("offer-host").textContent = host;
+  offer.hidden = false;
+
   if (await chrome.permissions.contains({ origins })) {
-    granted.textContent = `already on for ${host}`;
-    offer.hidden = false;
-    grant.hidden = true;
+    said.textContent = "already on";
+    grant.remove();
     return;
   }
 
-  grant.textContent = `Show the button on ${host}`;
-  offer.hidden = false;
   grant.addEventListener("click", async () => {
-    const allowed = await chrome.permissions.request({ origins });
-    if (!allowed) {
-      granted.textContent = "not granted";
+    if (!(await chrome.permissions.request({ origins }))) {
+      said.textContent = "not granted";
       return;
     }
-    await chrome.runtime.sendMessage({ type: "sync-anchor-sites" });
-    granted.textContent = "on — reload the page to see it";
-    grant.hidden = true;
-    paintSites();
+    said.textContent = "on — reload the page";
+    grant.remove();
+    resync();
   });
 }
 
-paintSites();
-offerCurrentHost();
+chrome.storage.local.get("endpoint").then(({ endpoint }) => {
+  document.getElementById("endpoint").value = endpoint || DEFAULT_ENDPOINT;
+});
+
+document.getElementById("save").addEventListener("click", async () => {
+  const said = document.getElementById("saved");
+  const value = document.getElementById("endpoint").value.trim();
+  await chrome.storage.local.set({ endpoint: value || DEFAULT_ENDPOINT });
+  said.textContent = "saved";
+  setTimeout(() => (said.textContent = ""), 1600);
+});
+
+paint();
+offerHostFromMenu();
