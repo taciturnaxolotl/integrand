@@ -9,13 +9,26 @@ not made a mistake.
 
 Machine: MacBook, Apple Silicon (arm64), torch 2.13, pix2tex 0.1.4.
 
-## Device
+## Backends
 
-| backend | exact | p50 | p95 |
-|---|---|---|---|
-| pix2tex / cpu | 27/35 | 160ms | 236ms |
-| pix2tex / mps | 26/35 | 397ms | 851ms |
-| symbolab (network reference) | 34/35 | 401ms | 537ms |
+| backend | exact | p50 | p95 | on disk |
+|---|---|---|---|---|
+| **unimernet small** | **35/35** | 799ms | 1048ms | ~750MB |
+| unimernet base | 35/35 | 1161ms | 1612ms | ~1.2GB |
+| symbolab (network reference) | 34/35 | 401ms | 537ms | — |
+| pix2tex / cpu | 27/35 | 160ms | 243ms | 97MB |
+| pix2tex / mps | 26/35 | 397ms | 851ms | 97MB |
+
+UniMERNet clears the corpus outright, and small matches base while being ~30%
+faster, so small is the pick. It costs roughly 5x pix2tex's latency and 8x its
+footprint; against that, pix2tex needs hand-fixing on a quarter of snips.
+
+UniMERNet cannot share a process with the converter: it pulls omegaconf, which
+pins antlr4-runtime to 4.9.3, while sympy's LaTeX parser needs 4.11. Run it in
+its own environment and hand LaTeX across — `scripts/dump-ocr.py` does this for
+benchmarking, and the service needs the same split to deploy it.
+
+## Device
 
 **CPU wins, and it isn't close.** MPS is ~2.4x slower. The decoder is
 autoregressive over 50-150 tokens and per-kernel launch overhead dominates a
@@ -41,10 +54,23 @@ pix2tex samples at temperature 0.25 by default. Near-greedy decoding
 (`temperature = 1e-8`) took exact matches from 22/35 to 26/35 and made both the
 score and the failures reproducible. There is one correct answer; do not sample.
 
+## WebAssign
+
+36 integrals from a real WebAssign assignment, cloned into a grid and rendered
+at 2x so the pixels match a Retina capture. UniMERNet small: **35/35 exact**.
+The 36th is `∫₁ˣ 3/t dt = ∫_{1/36}ˣ 1/t dt`, which has an integral on both
+sides; refusing that is correct, not a miss.
+
+Getting there took six converter fixes, every one found by real data rather
+than by the synthetic corpus — implicit products (`x(x-8)`), exponents binding
+to a group inside one, `\Big` sizing commands, `)(` adjacency, bare trig
+arguments (`\sec 3t(…)`), and equations wrapped around the operator
+(`F(x) = ∫…`). All are regressions in the test suite now.
+
 ## Accuracy gap
 
-pix2tex lands at 27/35 against Symbolab's 34/35. Roughly one snip in four will
-need hand-fixing, so the editable-LaTeX fallback in the extension is the main
+pix2tex lands at 27/35 against Symbolab's 34/35 and UniMERNet's 35/35. Roughly
+one snip in four needs hand-fixing, so the editable-LaTeX fallback is the main
 path for a quarter of uses, not an error case.
 
 Most remaining misses are a single misread variable (`x` read as `A`, `S`, `k`).

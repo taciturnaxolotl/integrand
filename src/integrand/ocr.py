@@ -55,10 +55,42 @@ def pix2tex() -> Backend:
     return run
 
 
+def unimernet() -> Backend:
+    """UniMERNet, via the upstream package's config-driven loader.
+
+    Needs its own environment: the package pins transformers 4.42, which pix2tex
+    and anything modern will not share. Point INTEGRAND_UNIMERNET_CFG at a
+    config yaml; see RECOGNITION.md.
+    """
+    import argparse
+
+    import torch
+    import unimernet.tasks as tasks
+    from PIL import Image
+    from unimernet.common.config import Config
+    from unimernet.processors import load_processor
+
+    cfg_path = os.environ["INTEGRAND_UNIMERNET_CFG"]
+    cfg = Config(argparse.Namespace(cfg_path=cfg_path, options=None))
+    model = tasks.setup_task(cfg).build_model(cfg).to("cpu").eval()
+    vis = load_processor(
+        "formula_image_eval", cfg.config.datasets.formula_rec_eval.vis_processor.eval
+    )
+
+    def run(image: bytes) -> str:
+        tensor = vis(Image.open(io.BytesIO(image)).convert("RGB")).unsqueeze(0)
+        with torch.no_grad():
+            return model.generate({"image": tensor})["pred_str"][0]
+
+    return run
+
+
 def load(name: str | None = None) -> Callable[[bytes], str]:
     name = name or os.environ.get("INTEGRAND_OCR", "symbolab")
     if name == "symbolab":
         return symbolab
     if name == "pix2tex":
         return pix2tex()
+    if name == "unimernet":
+        return unimernet()
     raise ValueError(f"unknown OCR backend: {name!r}")

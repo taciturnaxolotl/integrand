@@ -83,8 +83,38 @@ OCR_SHAPES = [
     (r"\int\operatorname{ln}(x)dx", "ln(x)", "x"),
     # a decorated single letter is still a variable
     (r"\int\cos^{3}\!\left(\mathcal{A}\right)d\mathcal{A}", "(cos(A))^(3)", "A"),
+    # UniMERNet space-separates every token
+    (r"\int x \mathrm { d } x", "x", "x"),
+    (r"\int x \, \mathrm { d } x", "x", "x"),
+    (r"{ \frac { d } { d x } } ( x ^ { 2 } )", "x^(2)", "x"),
+    (r"\int \frac { 2 x ^ { 2 } + 7 x - 1 } { x - 4 } d x",
+     "((2*x^(2) + 7*x) - 1)/(x - 4)", "x"),
+    # sizing commands carry no meaning for us
+    (r"\int \frac{1}{x^{2/3}\Big(8+x^{1/3}\Big)} dx",
+     "(1)/(x^((2)/(3))*(x^((1)/(3)) + 8))", "x"),
+    (r"\int \cot\Bigl(\frac{\theta}{9}\Bigr) d\theta", "cot((theta)/(9))", "theta"),
+    # a bare trig argument must not swallow the group after it
+    (r"\int \sec 3 t ( \sec 3 t + \tan 3 t ) \, d t",
+     "sec(3*t)*(tan(3*t) + sec(3*t))", "t"),
+    (r"\int ( \sec 2 x + \tan 2 x ) d x", "tan(2*x) + sec(2*x)", "x"),
+    (r"\int \tan 7 \theta \, d \theta", "tan(7*theta)", "theta"),
     # glued products are genuine products, not dropped backslashes
     (r"\int xy\,dx", "x*y", "x"),
+]
+
+#: LaTeX writes multiplication and function application the same way.
+IMPLICIT_PRODUCTS = [
+    (r"\int x(x+1) dx", "x*(x + 1)"),
+    (r"\int \frac{x(x-8)}{(x-4)^3} dx", "(x*(x - 8))/((x - 4)^(3))"),
+    # the exponent belongs to the group alone, not to the whole product
+    (r"\int \frac{1}{x(\ln(x^2))^9} dx", "(1)/(x*(ln(x^(2)))^(9))"),
+    (r"\int 2x(x-1)(x+3) dx", "((2*x)*(x - 1))*(x + 3)"),
+]
+
+#: A problem is often written as an equation around the operator.
+EQUATIONS = [
+    (r"F(x) = \int_0^x 4\tan(t) dt", "4*tan(t)", "t"),
+    (r"F(x) = \int_1^{x^4} \frac{1}{t} dt", "(1)/(t)", "t"),
 ]
 
 UNSUPPORTED = [
@@ -94,6 +124,10 @@ UNSUPPORTED = [
     (r"\int \operatorname{abs}(x) dx", "convert_failed"),
     (r"\int \Gamma(x) dx", "convert_failed"),
     (r"\begin{matrix} a & b \\ c & d \end{matrix}", "convert_failed"),
+    # a lone letter before a paren really may be a function
+    (r"\int f(x) dx", "convert_failed"),
+    # two operators in one equation is a guess, not a reading
+    (r"\int_1^x \frac{3}{t} dt = \int_{1/36}^x \frac{1}{t} dt", "unsupported_operator"),
 ]
 
 
@@ -111,6 +145,20 @@ def test_ocr_shapes(latex, expected, var):
     assert result.infix == expected
     assert result.var == var
     assert result.verified
+
+
+@pytest.mark.parametrize("latex,expected", IMPLICIT_PRODUCTS, ids=[c[0] for c in IMPLICIT_PRODUCTS])
+def test_implicit_products(latex, expected):
+    result = convert(latex)
+    assert result.infix == expected
+    assert result.verified
+
+
+@pytest.mark.parametrize("latex,expected,var", EQUATIONS, ids=[c[0] for c in EQUATIONS])
+def test_equation_around_the_operator(latex, expected, var):
+    result = convert(latex)
+    assert result.infix == expected
+    assert result.var == var
 
 
 @pytest.mark.parametrize("latex,code", UNSUPPORTED, ids=[c[0] for c in UNSUPPORTED])

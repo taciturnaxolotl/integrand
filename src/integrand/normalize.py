@@ -15,6 +15,12 @@ _OPERATORS = (
     "|ln|log|exp|det|dim|gcd|lim|max|min|deg|arg"
 )
 
+#: Some models emit one space between every token — `\frac { d } { d x }`.
+#: Whitespace touching a brace never carries meaning, and every structural rule
+#: below matches on tight braces, so this runs first and lets the rest stay
+#: readable instead of sprouting \s* everywhere.
+_LOOSE_BRACES = re.compile(r"\s*([{}])\s*")
+
 _SUBSTITUTIONS: list[tuple[str, str]] = [
     (r"\\mathop\{\}\s*\\!?\s*\\mathrm\{d\}", "d"),
     (r"\\mathrm\{d\}", "d"),
@@ -24,6 +30,8 @@ _SUBSTITUTIONS: list[tuple[str, str]] = [
     (r"\\(?:dfrac|tfrac)\b", r"\\frac"),
     (r"\\left\.|\\right\.", ""),
     (r"\\left|\\right", ""),
+    # \big \Bigg \Bigl \bigr … — sizing hints with no meaning for us
+    (r"\\[bB]igg?[lrm]?", ""),
     (r"\\displaystyle\b|\\limits\b|\\nolimits\b", ""),
     (r"\\(?:quad|qquad)\b", " "),
     (r"\\[,;:!]", ""),
@@ -63,6 +71,57 @@ _UNICODE = {
 _GLUED_DIFFERENTIAL = re.compile(r"(?<=[a-zA-Z0-9})])d([a-zA-Z])\s*$")
 
 
+#: `\sec 3t (…)` — a trig function written without parentheses. sympy hands the
+#: whole following product to the function, so `\sec 3t(\sec 3t + \tan 3t)`
+#: becomes sec of everything. Bracing the minimal argument restores the reading
+#: every textbook intends. An exponent on the function itself (`\ln^2(x)`) does
+#: not match, because `^` follows the command directly.
+_BARE_ARGUMENT = re.compile(
+    r"\\(sin|cos|tan|sec|csc|cot|sinh|cosh|tanh|sech|csch|coth|ln|log|exp)"
+    r"\s+(\d*\s*(?:[a-zA-Z]|\\[a-zA-Z]+)(?:\^(?:\{[^{}]*\}|\w))?)"
+)
+
+#: `)(` is always a product; nothing else can sit between two closed groups.
+#: `}(` is *not* — `\frac{d}{dx}(x^2)` is an operator meeting its operand.
+_ADJACENT_GROUPS = re.compile(r"\)\s*\(")
+
+#: …but a braced trig argument followed by a group is: `\sec{3t}(\sec{3t}+…)`.
+#: The extra braces matter — sympy hands a trig function the whole following
+#: product no matter how the argument is delimited, so the application itself
+#: has to be closed off before the `\cdot`.
+_TRIG_THEN_GROUP = re.compile(
+    r"(\\(?:sin|cos|tan|sec|csc|cot|sinh|cosh|tanh|sech|csch|coth|ln|log|exp)"
+    r"\{[^{}]*\})\s*\("
+)
+
+#: A lone letter immediately before an opening paren. `\sin(` cannot match:
+#: the character before the paren is `n`, which the lookbehind rejects.
+_IMPLICIT_CALL = re.compile(r"(?<![\\a-zA-Z])([a-zA-Z])\s*\(")
+
+
+def _make_products_explicit(latex: str) -> str:
+    """Turn `x(x-8)` into `x \cdot (x-8)` before sympy can read it as a call.
+
+    LaTeX writes multiplication and function application identically and sympy
+    guesses "call", so `x(x-8)` arrives as an undefined function. Fixing it
+    after parsing is not enough: in `x(\ln x)^9` the exponent belongs to the
+    group alone, and by then the tree already says otherwise.
+
+    Only letters that appear more than once are touched. A lone `f` in
+    `\int f(x) dx` really may be a function, and turning that into `f \cdot x`
+    would answer a different question convincingly.
+    """
+
+    def replace(match: re.Match) -> str:
+        letter = match.group(1)
+        elsewhere = re.findall(rf"(?<![\\a-zA-Z]){letter}(?![a-zA-Z])", latex)
+        return f"{letter} \\cdot (" if len(elsewhere) > 1 else match.group(0)
+
+    latex = _BARE_ARGUMENT.sub(r"\\\1{\2}", latex)
+    latex = _TRIG_THEN_GROUP.sub(r"{\1} \\cdot (", latex)
+    return _ADJACENT_GROUPS.sub(r") \\cdot (", _IMPLICIT_CALL.sub(replace, latex))
+
+
 def _strip_wrapping_braces(latex: str) -> str:
     """Drop a brace pair that wraps the whole expression: `{\frac{d}{dx}}(x)`."""
     while latex.startswith("{") and latex.endswith("}"):
@@ -79,9 +138,10 @@ def normalize(latex: str) -> str:
     out = latex.strip()
     for bad, good in _UNICODE.items():
         out = out.replace(bad, good)
+    out = _LOOSE_BRACES.sub(r"\1", out)
     for pattern, repl in _SUBSTITUTIONS:
         out = re.sub(pattern, repl, out)
     out = re.sub(r"\s+", " ", out).strip()
     if "\\int" in out:
         out = _GLUED_DIFFERENTIAL.sub(r" d\1", out)
-    return _strip_wrapping_braces(out)
+    return _strip_wrapping_braces(_make_products_explicit(out))

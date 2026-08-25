@@ -13,7 +13,7 @@ from html import unescape
 from urllib.parse import quote
 
 from sympy import (
-    Abs, Derivative, E, Integral, Pow, Rational, Symbol, sqrt, log, pi,
+    Abs, Derivative, E, Eq, Integral, Pow, Rational, Symbol, sqrt, log, pi,
 )
 from sympy import functions as sympy_functions
 from sympy.parsing.latex import parse_latex
@@ -90,6 +90,16 @@ def _parse(latex: str):
 
 
 def _route(expr) -> tuple[str, object, Symbol, tuple | None]:
+    # `F(x) = \int_0^x f(t) dt` is a normal way for a problem to be written, and
+    # a crop of it catches the whole line. One operator on one side is
+    # unambiguous; two would be a guess, so that still refuses.
+    if isinstance(expr, Eq):
+        sides = [side for side in expr.args if isinstance(side, (Integral, Derivative))]
+        if len(sides) != 1:
+            raise ConvertError(
+                "unsupported_operator", "an equation with no single integral or derivative"
+            )
+        return _route(sides[0])
     if isinstance(expr, Integral):
         if len(expr.limits) != 1:
             raise ConvertError("unsupported_operator", "multiple integrals")

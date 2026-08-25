@@ -75,19 +75,33 @@ def make_pix2tex(device: str):
     return run
 
 
+def make_unimernet():
+    """Runs in its own venv; see RECOGNITION.md for why."""
+    from integrand.ocr import unimernet
+
+    started = time.perf_counter()
+    backend = unimernet()
+    print(f"  model loaded in {time.perf_counter() - started:.1f}s")
+    return lambda image: backend(image.read_bytes())
+
+
 def make_backend(name: str, device: str):
     if name == "symbolab":
         return symbolab_backend
+    if name == "unimernet":
+        return make_unimernet()
     return make_pix2tex(device)
 
 
-BACKENDS = ("symbolab", "pix2tex")
+BACKENDS = ("symbolab", "pix2tex", "unimernet")
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("corpus", type=Path)
     parser.add_argument("--backend", choices=BACKENDS, default="pix2tex")
+    parser.add_argument("--ocr-json", type=Path,
+                        help="score a dump from scripts/dump-ocr.py instead of running a backend")
     parser.add_argument("--device", default="cpu", help="cpu or mps (pix2tex only)")
     parser.add_argument("--dpi", type=int, default=220)
     parser.add_argument("--limit", type=int)
@@ -97,21 +111,26 @@ def main() -> int:
     labels = json.loads((args.corpus / "labels.json").read_text())
     if args.limit:
         labels = labels[: args.limit]
-    backend = make_backend(args.backend, args.device)
+    if args.ocr_json:
+        dump = json.loads(args.ocr_json.read_text())
+        args.backend, args.dpi = dump["backend"], dump["dpi"]
+        precomputed, latencies_from_dump = dump["latex"], dump["latencies_ms"]
+        backend = lambda image: precomputed.get(image.name) or ""
+    else:
+        latencies_from_dump = None
+        backend = make_backend(args.backend, args.device)
 
     warmup = next((args.corpus / n for l in labels for n in l["images"] if f"@{args.dpi}." in n), None)
-    if warmup is not None and args.backend != "symbolab":
+    if warmup is not None and not args.ocr_json and args.backend not in ("symbolab",):
         backend(warmup)  # lazy init and kernel compilation are not per-request costs
 
     exact = converted = verified = 0
     latencies, misses = [], []
 
     for label in labels:
-        image = next(
-            (args.corpus / name for name in label["images"] if f"@{args.dpi}." in name), None
+        image = args.corpus / next(
+            (n for n in label["images"] if f"@{args.dpi}." in n), label["images"][0]
         )
-        if image is None:
-            continue
 
         started = time.perf_counter()
         try:
@@ -137,11 +156,13 @@ def main() -> int:
         time.sleep(args.delay)
 
     total = len(labels)
-    label = args.backend if args.backend == "symbolab" else f"{args.backend}/{args.device}"
+    label = args.backend if args.backend != "pix2tex" else f"{args.backend}/{args.device}"
     print(f"\n{label} @ {args.dpi}dpi, {total} expressions")
     print(f"  converted  {converted}/{total}")
     print(f"  verified   {verified}/{total}")
     print(f"  exact      {exact}/{total}")
+    if latencies_from_dump:
+        latencies = latencies_from_dump
     if latencies:
         ordered = sorted(latencies)
         p95 = ordered[min(len(ordered) - 1, int(len(ordered) * 0.95))]
