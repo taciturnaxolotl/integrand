@@ -98,3 +98,27 @@ Those convert cleanly and pass the round-trip verification gate, because they
 are valid expressions — just not the one on screen. No downstream check can
 catch that class, which is why the OCR'd LaTeX should be visible on success and
 not only on failure.
+
+## Hints
+
+Naming the technique comes from sympy's `integral_steps` rule tree, measured on
+the same 36 real WebAssign problems.
+
+| | hints | median | p90 | worst |
+|---|---|---|---|---|
+| straight to `integral_steps` | 32/36 | 164ms | 1963ms | 5025ms |
+| rational functions decomposed first | 34/36 | 71ms | 463ms | 1620ms |
+
+Profiling the worst case showed where it went: `_alternatives` explores every
+strategy and recurses into each, and `Basic.match` — sympy's commutative
+pattern matcher — was called **29,302 times** on one integrand. We then take
+`alternatives[0]` and discard the rest.
+
+Calling `apart` on a rational function first collapses that search into a sum of
+standard forms: 3475ms to 310ms on `∫ x(x-8)/(x-4)³ dx`. It is also the more
+truthful hint, since partial fractions is what the problem actually wants.
+
+The remaining tail is non-rational, `∫₁^e (2+ln x)⁴/x dx` at 1.6s, where the
+expanded fourth power gives the matcher a large `Add` to work through. Hints are
+fetched after a result is on screen, with a 6s timeout, so the tail costs
+nothing on the path to an answer.

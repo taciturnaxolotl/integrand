@@ -109,10 +109,48 @@ def _describe(rule, depth: int = 0) -> Hint | None:
 _PLAIN = "a standard form, no technique needed"
 
 
+def _rational_hint(integrand, variable) -> Hint | None:
+    """Decompose a rational function before searching for a technique.
+
+    Left alone, `integral_steps` explores every strategy for one of these and
+    recurses into each — the worst real problem measured spent 3.5 seconds and
+    called sympy's pattern matcher 29,000 times. Decomposing first collapses
+    that to a sum of standard forms: 310ms for the same integrand.
+
+    It is also the better hint. Partial fractions is what the problem wants;
+    letting the search rediscover that and report whatever it tried first was
+    both slower and less true.
+    """
+    from sympy import Poly, apart
+
+    if not integrand.is_rational_function(variable):
+        return None
+    try:
+        decomposed = apart(integrand, variable)
+        # Not decomposed unless it actually came apart into terms. `apart` can
+        # hand back a structurally different but single-term expression, and
+        # calling `5/(6x+1)` partial fractions would be a lie.
+        if decomposed == integrand or not decomposed.is_Add:
+            return None
+        numerator, denominator = integrand.as_numer_denom()
+        top = Poly(numerator, variable).degree()
+        bottom = Poly(denominator, variable).degree()
+    except Exception:
+        return None
+
+    shown = _show(decomposed)
+    detail = shown if len(shown) <= _MAX_DETAIL else None
+    if top >= bottom:
+        return Hint("dividing it out first", detail)
+    return Hint("partial fractions", detail)
+
+
 def for_integral(integrand, variable) -> Hint | None:
     from sympy.integrals.manualintegrate import integral_steps
 
     try:
+        if found := _rational_hint(integrand, variable):
+            return found
         return _describe(integral_steps(integrand, variable))
     except Exception:
         return None

@@ -285,6 +285,14 @@ HINTS = [
     (r"\int x^3 dx", "a standard form, no technique needed", None),
     # routing shapes are unwrapped the same way convert unwraps them
     (r"F(x) = \int_0^x 4\tan(t) dt", "a substitution", "u = cos(t)"),
+    # rational functions are decomposed before searching: better hint, and it
+    # takes the worst real problem from 3.5s to 310ms
+    (r"\int \frac{1}{(x-1)(x-2)} dx", "partial fractions",
+     "(-1)/(x - 1) + (1)/(x - 2)"),
+    (r"\int \frac{2x^2+7x-1}{x-4} dx", "dividing it out first",
+     "2*x + 15 + (59)/(x - 4)"),
+    # but a single term is not partial fractions however apart restructures it
+    (r"\int \frac{5}{6x+1} dx", "a substitution", "u = 6*x + 1"),
     # derivatives are read off the shape; there is no manualdiff to ask
     (r"\frac{d}{dx}(x^2\sin(x))", "the product rule", None),
     (r"\frac{d}{dx}(\frac{x}{x+1})", "the quotient rule", None),
