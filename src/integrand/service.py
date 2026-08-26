@@ -19,6 +19,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import hint as hints
@@ -84,7 +85,19 @@ def _load_backend() -> None:
 _LANDING = Path(__file__).resolve().parents[2] / "landing" / "index.html"
 
 
-@app.get("/", include_in_schema=False)
+#: Favicon, social card and touch icon. Mounted rather than a route each,
+#: because the set will grow and none of it is worth a handler.
+if (_LANDING.parent / "assets").is_dir():
+    app.mount(
+        "/assets",
+        StaticFiles(directory=_LANDING.parent / "assets"),
+        name="assets",
+    )
+
+
+#: HEAD as well as GET. Uptime checks and link unfurlers reach for it, and a
+#: 405 on the front page reads like the site is down.
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 def landing() -> Response:
     if not _LANDING.is_file():
         return JSONResponse(content={"service": "integrand", "docs": "/docs"})
