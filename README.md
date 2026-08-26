@@ -90,6 +90,15 @@ offers.
 PDFs work too: Chrome's viewer is a normal `https:` document, so the overlay
 paints over it and the crop captures the rendered page.
 
+## Fixing the sites we read from
+
+[`userscripts/`](userscripts/) carries fixes for the sites integrand works
+against. So far: WebAssign's answer boxes vanish because MathJax is loaded once
+per question and clobbers its own callbacks, and the bracket pairing that
+disappeared when they moved off MathQuill. See
+[userscripts/README.md](userscripts/README.md) — the causes are not guessable
+from the symptoms.
+
 This depends on someone else's free site and will break if David Scherfgen
 changes his URL scheme.
 

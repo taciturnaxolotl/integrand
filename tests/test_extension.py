@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-EXTENSION = Path(__file__).resolve().parents[1] / "extension"
-SOURCES = sorted(EXTENSION.rglob("*.js"))
+ROOT = Path(__file__).resolve().parents[1]
+SOURCES = sorted([*(ROOT / "extension").rglob("*.js"), *(ROOT / "userscripts").rglob("*.js")])
 
 #: A backtick that is not escaped. Template literals are the only thing in this
 #: codebase that spans lines and swallows whatever is inside it.
