@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         WebAssign — bring the entry box back
 // @namespace    dunkirk.sh
-// @version      2.0.0
-// @description  Unsticks answer boxes that never finish rendering, and restores the pairing, templates and backslash commands lost when WebAssign moved off MathQuill.
+// @version      2.1.0
+// @description  Unsticks answer boxes that never finish rendering, and restores the bracket pairing, Greek commands and hyperbolic autoformat lost when WebAssign moved off MathQuill.
 // @match        *://*.webassign.net/*
 // @run-at       document-idle
 // @grant        none
@@ -17,18 +17,25 @@
 //     1/2   ->  <mn>1</mn><mo>/</mo><mn>2</mn>     a literal slash
 //     x^2   ->  <mi>x</mi><mo>^</mo><mn>2</mn>     a literal caret
 //
-// No fraction, no superscript. Every template needs a trip to the toolbar.
+// No fraction, no superscript. Every template needs a trip to the toolbar, and
+// no script can put that back — see below.
 //
 // What a userscript can reach, also measured:
 //
-//     toolbar button .click()          works
+//     toolbar button .click()          works on an empty box
 //     execCommand("insertText", …)     works, unicode included
 //     execCommand("delete")            does nothing
 //     synthetic KeyboardEvents         do nothing
 //
-// So text can go in and templates can be inserted, but nothing already typed
-// can be selected or removed. That boundary decides the whole design, and it is
-// why `1/` cannot lift the 1 into a numerator the way MathQuill did.
+// So text can go in, but nothing already typed can be selected or removed —
+// which is why `1/` cannot lift the 1 into a numerator the way MathQuill did.
+//
+// And a harder limit found later: driving the editor from script with content
+// already in the box is not safe. Pressing a structural button that way was
+// measured emptying the box, and repeated poking left one displaying its own
+// MathML source as text — the same class of bug this script exists to fix.
+// So this stays on the two operations WebAssign itself performs in production:
+// pressing a delimiter button, and inserting text.
 //
 // Everything below goes through MathType's own toolbar and its own input path,
 // so MathType still produces the MathML that gets submitted. Nothing here
@@ -53,22 +60,25 @@
   // ---- what the toolbar can build --------------------------------------------
 
   //: Typed character -> toolbar button. Labels are the buttons' own aria-labels.
+  //:
+  //: Delimiters only, on purpose. `/`, `^` and `_` were here in v2 and are
+  //: gone: a structural template inserted from script, with content already in
+  //: the box, was measured wiping the box to `<math/>` — worse than the literal
+  //: character it replaced. Pairing survives because it is the same operation
+  //: WebAssign's own autoformat performs in production, on the same button.
   const TEMPLATES = {
     "|": "Vertical bars",
     "[": "Square brackets",
     "{": "Curly brackets",
     "(": "Parentheses",
-    "/": "Fraction",
-    "^": "Superscript",
-    _: "Subscript",
   };
 
   //: \name commands, the way MathQuill took them. A template presses a button;
   //: a symbol is inserted as text, which MathType accepts including non-ASCII.
+  //: Symbols only. `\frac` and `\sqrt` would press a structural button, which
+  //: is the operation that was seen destroying content; inserting a character
+  //: does not touch the tree.
   const COMMANDS = {
-    frac: { button: "Fraction" },
-    sqrt: { button: "Square root" },
-    root: { button: "Root" },
     abs: { button: "Vertical bars" },
     infty: { text: "∞" },
     inf: { text: "∞" },
@@ -262,5 +272,5 @@
     window.mathTypeEditor.replacements.length = 0;
   }
 
-  console.log("[better-entry] v2 — pairing, templates, backslash commands, unsticking");
+  console.log("[better-entry] 2.1 — pairing, \\commands, hyperbolics, unsticking");
 })();

@@ -86,7 +86,19 @@ set either.
 
 **That is why `1/` cannot lift the 1 into a numerator.** Restoring MathQuill's
 fraction needs either selecting the preceding term or deleting it, and neither
-is reachable. A fraction arrives empty and is filled top-down.
+is reachable.
+
+There is a harder limit behind that one. Driving the editor from script *with
+content already in the box* is not safe. Pressing a structural button that way
+was measured emptying the box to `<math/>`, and repeated poking left one
+rendering its own MathML source as literal text — the same class of bug this
+script exists to fix. Version 2.0 shipped `/`, `^` and `_` interception on that
+mechanism and 2.1 removed it.
+
+What is left is deliberately the two operations WebAssign itself performs in
+production: pressing a delimiter button, and inserting text. Anything that
+rebuilds the expression tree from outside belongs in a replacement editor, not
+in a script poking this one.
 
 ### What the script does
 
@@ -98,10 +110,8 @@ difference.
 - Unsticks the boxes.
 - **Pairs** `|`, `[`, `{`, `(` — the template goes in instead of the bare
   character, cursor between the halves.
-- **Templates without the toolbar**: `/` fraction, `^` superscript, `_`
-  subscript. Empty, for the reason above, but no trip to the palette.
 - **`\` commands**, the way MathQuill took them: `\pi`, `\theta`, `\infty`,
-  `\pm`, `\le`, `\sqrt`, `\frac`, and the rest of the Greek alphabet. Letters
+  `\pm`, `\le`, and the rest of the Greek alphabet. Letters
   after the backslash are swallowed rather than inserted, so a small readout
   under the box shows what is pending. Space or Enter commits, Escape cancels,
   and an unrecognised command types itself out so nothing is lost.
