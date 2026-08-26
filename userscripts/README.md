@@ -38,6 +38,76 @@ removes the class.
 It is a race, and it worsens as the page settles: **3 of 19 stuck on load, 10 of
 19 once it had.**
 
+### Answers erased on the way out
+
+Blank boxes are not, mostly, a rendering fault. **The stored answer is erased,
+and the blank box is that erasure drawn faithfully.**
+
+One editor instance is shared by every box of a type. Closing a box resets it to
+a sentinel meaning "not holding anything" (`overlay.js:1037`):
+
+```js
+MATHTYPE_DEFAULT = '<math xmlns="http://www.w3.org/1998/Math/MathML"/>'
+setMathTypeValue(editorType, window.mathTypeEditor.MATHTYPE_DEFAULT, resolve);
+```
+
+`syncAnswerValue` writes the answer field from whatever the live editor reports,
+and reads that sentinel as an empty answer:
+
+```js
+return liveMathML && liveMathML !== MATHTYPE_DEFAULT ? liveMathML : "";
+...
+if (mathML) answerField.value = mathML; else answerField.value = "";
+```
+
+So a sync landing between the reset and the box losing ownership wipes the
+answer. The close button syncs on **both `focus` and `pointerdown`**, which is
+exactly when the reset is running — the two are racing over one shared editor.
+
+There is a second, worse turn. The field is written *before*
+`warnInvalidMathTypeCharacters` runs, and that throws when a box lacks its
+warning element. Measured on a live page:
+
+```
+without guard:  ERASED (and threw: Cannot set properties of null …)
+with guard:     PRESERVED
+```
+
+The throw leaves the answer erased *and* abandons the rest of the close.
+
+**Why correcting it is safe.** A box the student really emptied reads back
+`<math><mspace/></math>` — neither falsy nor the sentinel — so it is stored
+normally. An answer field that held something and is empty immediately after a
+sync has therefore always come through the sentinel path, and keeping what was
+there is always right. The script wraps `window.mathTypeOverlay.syncAnswerValue`
+in a `try`/`finally` that restores the previous value in that one case, so it
+holds even when the sync throws.
+
+### Answers drawn too small to see, and why that is not fixed here
+
+A closed box is not the editor's rendering. It holds the raw MathML, drawn
+natively by the browser, and it inherits the page's 13px. At that size the bar
+over a square root is thinner than a pixel and is never painted — the surd
+appears and the bar does not, which reads as a browser rendering bug.
+
+The same markup at four sizes says otherwise:
+
+```
+13px   surd drawn, bar invisible
+20px   bar faint but present
+32px   flawless
+48px   flawless
+```
+
+So nothing is wrong with the markup, the font, or MathML support. It is only too
+small, and `.mathtype .mtAnswer math { font-size: 1.45em }` restores the bar.
+
+**It is not shipped.** That rule resizes every answer on the page, and with it in
+place boxes appeared to blank more often. A missing hairline is a cosmetic
+complaint; a blank answer is not, so the trade is the wrong way round. It is
+worth revisiting once the rendering is stable enough to attribute a blank box to
+one cause with confidence.
+
 ### Typing that stopped existing
 
 WebAssign used to run its own MathQuill fork — still on their GitHub, last
@@ -152,7 +222,7 @@ and the write queue that version 3 needed are all gone.
 
 ### What the script does
 
-- Unsticks the boxes.
+- Unsticks the boxes, and stops the close race erasing answers.
 - **`/` builds a real fraction**, lifting the term you just typed into the
   numerator and leaving you in the denominator.
 - **`^` and `_`** script the preceding term.
