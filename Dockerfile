@@ -53,13 +53,6 @@ WORKDIR /app
 # The project is installed into the venv as a link back to /app/src, so the
 # source has to land at the same path it had at build time.
 COPY src ./src
-COPY landing ./landing
-
-# The download the landing page offers. Built here rather than committed, so it
-# is always the extension that shipped in this image rather than whatever was
-# zipped by hand last.
-COPY extension ./extension
-RUN python -c "import shutil; shutil.make_archive('/app/landing/integrand', 'zip', '.', 'extension')"
 
 RUN useradd --system --create-home --uid 999 integrand
 EXPOSE 8765
@@ -69,6 +62,13 @@ CMD ["uvicorn", "integrand.service:app", "--host", "0.0.0.0", "--port", "8765"]
 FROM runtime AS converter
 
 COPY --from=build-converter /app/.venv /app/.venv
+
+# The page and its download live only here — the OCR image answers /v1/ocr and
+# nothing else. Copied after the venv so editing the page rebuilds one small
+# layer rather than everything above it.
+COPY landing ./landing
+COPY extension ./extension
+RUN python -c "import shutil; shutil.make_archive('/app/landing/integrand', 'zip', '.', 'extension')"
 
 # Talks to the other image by default. Point INTEGRAND_OCR_URL wherever it
 # lives, or set INTEGRAND_OCR=symbolab to do without one entirely.

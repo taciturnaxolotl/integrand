@@ -10,7 +10,7 @@ services:
     build:
       context: .
       target: converter
-    image: integrand:0.3.0
+    image: integrand:0.3.1
     ports:
       # Loopback only: this is a local tool, not something to expose. Override
       # the host side when the dev service already has 8765.
