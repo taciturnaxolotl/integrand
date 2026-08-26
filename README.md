@@ -148,8 +148,8 @@ docker compose up -d
 
 `INTEGRAND_BIND` defaults to loopback. Set it to the Tailscale address when
 something else has to reach the service, which keeps it off the LAN either way.
-Pulling is left explicit — `docker compose pull` — so starting and restarting
-need no registry credentials.
+Pulling is left explicit — `docker compose pull`. The images are public, so no
+registry credential is needed anywhere.
 Images are `linux/arm64`, built on Apple silicon for a host of the same shape;
 a different architecture needs `docker buildx --platform`.
 
