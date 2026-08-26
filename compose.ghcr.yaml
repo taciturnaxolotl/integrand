@@ -9,7 +9,7 @@
 
 services:
   integrand:
-    image: ghcr.io/taciturnaxolotl/integrand:0.3.2
+    image: ghcr.io/taciturnaxolotl/integrand:0.3.3
     ports:
       - "${INTEGRAND_BIND:-127.0.0.1}:${INTEGRAND_PORT:-8765}:8765"
     environment:
