@@ -55,6 +55,39 @@ no absolute value. It works by finding MathType's own toolbar button and
 clicking it. Their own comment concedes `sinh`/`cosh`/`tanh` cannot work,
 because `sin` fires before you can type the `h`.
 
+### What the keyboard actually does now
+
+Measured on a live assignment, typing straight into a box:
+
+```
+1/2   ->  <mn>1</mn><mo>/</mo><mn>2</mn>     a literal slash, no <mfrac>
+x^2   ->  <mi>x</mi><mo>^</mo><mn>2</mn>     a literal caret, no <msup>
+```
+
+Every template needs a trip to the toolbar. That is the whole reason it stopped
+feeling like a nice place to type.
+
+### What a userscript can reach
+
+Also measured, because it decides what is buildable:
+
+| | |
+|---|---|
+| toolbar button `.click()` | works |
+| `execCommand("insertText", …)` | works, unicode included |
+| `execCommand("delete")` | does nothing |
+| synthetic `KeyboardEvent`s | do nothing |
+
+Real key events do work — `123`, `shift+Left` ×3, `Cmd+/` gives
+`<mfrac><mn>123</mn><mrow/></mfrac>`, so MathType *will* wrap a selection. But a
+userscript cannot send real key events, and the `wrs_focusElement` it types into
+is an empty keystroke sink rather than a text buffer, so there is no selection to
+set either.
+
+**That is why `1/` cannot lift the 1 into a numerator.** Restoring MathQuill's
+fraction needs either selecting the preceding term or deleting it, and neither
+is reachable. A fraction arrives empty and is filled top-down.
+
 ### What the script does
 
 Everything goes through MathType's toolbar, the same mechanism WebAssign's own
@@ -63,11 +96,18 @@ nothing here produces answer data and grading cannot be affected by a formatting
 difference.
 
 - Unsticks the boxes.
-- Pairs `|`, `[`, `{` and `(` — the template goes in instead of the bare
+- **Pairs** `|`, `[`, `{`, `(` — the template goes in instead of the bare
   character, cursor between the halves.
-- Fixes the hyperbolics. The bug is not ordering, it is timing: a name that is
-  the prefix of a longer one waits 140ms to see whether the rest arrives, and a
-  name with no longer form fires immediately. `log` and `ln` stay instant,
+- **Templates without the toolbar**: `/` fraction, `^` superscript, `_`
+  subscript. Empty, for the reason above, but no trip to the palette.
+- **`\` commands**, the way MathQuill took them: `\pi`, `\theta`, `\infty`,
+  `\pm`, `\le`, `\sqrt`, `\frac`, and the rest of the Greek alphabet. Letters
+  after the backslash are swallowed rather than inserted, so a small readout
+  under the box shows what is pending. Space or Enter commits, Escape cancels,
+  and an unrecognised command types itself out so nothing is lost.
+- **Fixes the hyperbolics.** The bug is not ordering, it is timing: a name that
+  is the prefix of a longer one waits 140ms to see whether the rest arrives, and
+  a name with no longer form fires immediately. `log` and `ln` stay instant,
   `sinh` works.
 
 ### What is deliberately not done
