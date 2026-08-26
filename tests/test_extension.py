@@ -62,6 +62,31 @@ def test_parses(path):
     assert done.returncode == 0, done.stderr
 
 
+USERSCRIPTS = sorted((ROOT / "userscripts").glob("*.user.js"))
+
+
+@pytest.mark.parametrize("path", USERSCRIPTS, ids=lambda p: p.name)
+def test_userscript_metadata_is_one_key_per_line(path):
+    """Tampermonkey parses the header line by line.
+
+    A wrapped value — a @description running onto a second line, say — is read
+    as a key of its own and rejected. It installs fine right up until it does
+    not, and nothing else in the file would ever catch it.
+    """
+    lines = path.read_text().splitlines()
+    start = lines.index("// ==UserScript==")
+    end = lines.index("// ==/UserScript==")
+    body = lines[start + 1 : end]
+
+    assert body, f"{path.name} has an empty metadata block"
+    stray = [line for line in body if not re.match(r"^// @[a-zA-Z:-]+\s+\S", line)]
+    assert not stray, "wrapped or malformed metadata lines:\n" + "\n".join(stray)
+
+    keys = [line.split()[1] for line in body]
+    for required in ("@name", "@match"):
+        assert required in keys, f"{path.name} is missing {required}"
+
+
 def test_the_check_catches_the_real_shape():
     broken = """
     showPanel(`

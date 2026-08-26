@@ -2,9 +2,7 @@
 // @name         WebAssign — bring the entry box back
 // @namespace    dunkirk.sh
 // @version      1.0.0
-// @description  Unsticks answer boxes that never finish rendering, and puts back
-//               the bracket pairing that was lost when WebAssign moved from its
-//               own MathQuill fork to MathType.
+// @description  Unsticks answer boxes that never finish rendering, and restores the bracket and absolute-value pairing lost when WebAssign moved off MathQuill.
 // @match        *://*.webassign.net/*
 // @run-at       document-idle
 // @grant        none
