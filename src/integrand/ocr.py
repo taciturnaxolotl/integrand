@@ -6,6 +6,7 @@ change rather than an extension rewrite.
 
 from __future__ import annotations
 
+import base64
 import io
 import os
 from typing import Callable, Protocol
@@ -85,6 +86,41 @@ def unimernet() -> Backend:
     return run
 
 
+def remote() -> Backend:
+    """OCR on another box.
+
+    This is what keeps the service image small. The converter is sympy and
+    almost nothing else — a couple of hundred megabytes — while a model and its
+    half a gigabyte of torch are a different kind of thing to deploy. Splitting
+    them means the part that has to be up all the time is the cheap part, and
+    the expensive part can live wherever there is room, or not run at all.
+
+    Deliberately stdlib: adding an HTTP client to pull one JSON body would put
+    a dependency into the very image whose smallness is the point.
+    """
+    import json
+    import urllib.error
+    import urllib.request
+
+    url = os.environ.get("INTEGRAND_OCR_URL", "http://ocr:8765/v1/ocr")
+    timeout = float(os.environ.get("INTEGRAND_OCR_TIMEOUT", "30"))
+
+    def run(image: bytes) -> str:
+        payload = json.dumps({"image": base64.b64encode(image).decode()}).encode()
+        request = urllib.request.Request(
+            url, data=payload, headers={"Content-Type": "application/json"}
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return json.loads(response.read())["latex"]
+        except urllib.error.URLError as cause:
+            # Say which box was not reachable; "connection refused" on its own
+            # is a bad thing to read at midnight.
+            raise RuntimeError(f"no OCR service at {url}: {cause.reason}") from cause
+
+    return run
+
+
 def load(name: str | None = None) -> Callable[[bytes], str]:
     name = name or os.environ.get("INTEGRAND_OCR", "symbolab")
     if name == "symbolab":
@@ -93,4 +129,6 @@ def load(name: str | None = None) -> Callable[[bytes], str]:
         return pix2tex()
     if name == "unimernet":
         return unimernet()
+    if name == "remote":
+        return remote()
     raise ValueError(f"unknown OCR backend: {name!r}")

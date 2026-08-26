@@ -1,6 +1,6 @@
 [project]
 name = "integrand"
-version = "0.1.0"
+version = "0.3.0"
 description = "Screenshot a math expression, land on a step-by-step solver with it filled in"
 readme = "README.md"
 authors = [
@@ -23,8 +23,26 @@ dev = [
 ]
 ocr = [
     "pix2tex>=0.1.4",
+    # Named here only so the CPU index below can apply to them; pix2tex would
+    # pull both in anyway, from the default index and with all of CUDA.
+    "torch>=2.0",
+    "torchvision>=0.15",
 ]
 service = [
     "fastapi>=0.141.1",
     "uvicorn>=0.52.4",
 ]
+
+# The OCR image runs on CPU: MPS measured 2.4x slower than CPU on this model,
+# and no deployment target here has a GPU. Left to itself uv resolves the CUDA
+# build of torch on Linux and drags in fifteen nvidia-* packages — gigabytes of
+# libraries the container will never load. Scoped to Linux so resolution on
+# macOS, where these wheels do not exist anyway, is untouched.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+torchvision = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]

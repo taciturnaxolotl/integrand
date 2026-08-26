@@ -1,0 +1,41 @@
+# Deploying from published images, for a host with no checkout. Copy this over
+# on its own alongside a .env naming the bind address:
+#
+#   INTEGRAND_BIND=100.64.146.69
+#
+# Loopback by default, so the service is only ever where you put it. Pulling is
+# explicit — `docker compose pull` — which keeps registry credentials out of
+# starting and restarting.
+
+services:
+  integrand:
+    image: ghcr.io/taciturnaxolotl/integrand:0.3.0
+    ports:
+      - "${INTEGRAND_BIND:-127.0.0.1}:${INTEGRAND_PORT:-8765}:8765"
+    environment:
+      INTEGRAND_ORIGINS: "*"
+      INTEGRAND_OCR: remote
+      INTEGRAND_OCR_URL: http://ocr:8765/v1/ocr
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      ocr:
+        condition: service_started
+
+  ocr:
+    image: ghcr.io/taciturnaxolotl/integrand-ocr:0.3.0
+    expose:
+      - "8765"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "4"

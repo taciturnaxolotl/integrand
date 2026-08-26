@@ -3,6 +3,7 @@ const DEFAULT_ENDPOINT = "http://localhost:8765";
 // Where the LaTeX comes from on each bundled site. The page reader handles
 // all of them directly, which is why they ship switched on.
 const SOURCE = {
+  "*://integrand.dunkirk.sh/*": "MathML",
   "*://*.webassign.net/*": "watex",
   "*://*.myopenmath.com/*": "MathJax",
   "*://*.instructure.com/*": "Canvas",

@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>integrand: math solver</title>
+  <meta name="description" content="Easily solve math equations on the web!">
+  <style>
+    :root {
+      --paper: #fbf7ef;
+      --ink: #1f2224;
+      --muted: #7d6f52;
+      --line: #ddd3c0;
+      --accent: #276a80;
+      --accent-ink: #fff;
+      --sunk: #f2ebde;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper: #191c1e;
+        --ink: #f3eee4;
+        --muted: #aba18e;
+        --line: #414850;
+        --accent: #6cc0da;
+        --accent-ink: #0c1518;
+        --sunk: #0f1315;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 17px/1.6 ui-serif, Georgia, "Times New Roman", serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page {
+      max-width: 60ch;
+      margin: 0 auto;
+      padding: 9vh 24px 12vh;
+    }
+
+    h1 {
+      font-size: clamp(2.6rem, 9vw, 4.1rem);
+      line-height: 1;
+      margin: 0;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+    }
+
+    h1 .sign {
+      color: var(--accent);
+      font-style: italic;
+      margin-right: 0.06em;
+    }
+
+    .lede {
+      font-size: 1.22rem;
+      margin: 0.7rem 0 0;
+    }
+
+    h2 {
+      font-size: 0.79rem;
+      font-weight: 600;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 3.4rem 0 0.9rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    p {
+      margin: 0 0 1rem;
+    }
+
+    a {
+      color: var(--accent);
+      text-underline-offset: 2px;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.85em;
+    }
+
+    pre {
+      background: var(--sunk);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 12px 15px;
+      overflow-x: auto;
+      margin: 0 0 1rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.82rem;
+      line-height: 1.55;
+    }
+
+    /* The demo. Big enough to drag a box around comfortably, and real MathML so
+     the click-to-snip path has something exact to find. */
+    .demo {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--sunk);
+      padding: 2.2rem 1rem;
+      margin: 0 0 0.8rem;
+      text-align: center;
+    }
+
+    .demo math {
+      font-size: 2rem;
+    }
+
+    .demo+p {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .second {
+      margin-top: 0.9rem;
+      padding: 1.4rem 1rem;
+    }
+
+    .second math {
+      font-size: 1.5rem;
+    }
+
+    .get {
+      display: inline-block;
+      margin: 0.2rem 0 0.9rem;
+      background: var(--accent);
+      color: var(--accent-ink);
+      text-decoration: none;
+      border-radius: 7px;
+      padding: 9px 16px;
+      font-size: 0.95rem;
+    }
+
+    .get:hover {
+      background: color-mix(in oklch, var(--accent) 84%, var(--ink));
+    }
+
+    .after {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    ul.plain {
+      margin: 0 0 1rem;
+      padding: 0;
+      list-style: none;
+    }
+
+    ul.plain li {
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    ul.plain li:first-child {
+      border-top: 1px solid var(--line);
+    }
+
+    ul.plain b {
+      font-weight: 600;
+    }
+
+    ul.plain span {
+      color: var(--muted);
+    }
+
+    footer {
+      margin-top: 3.6rem;
+      padding-top: 1.3rem;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    footer a {
+      color: var(--muted);
+    }
+
+    footer a:hover {
+      color: var(--accent);
+    }
+  </style>
+</head>
+
+<body>
+  <main class="page">
+
+    <h1><span class="sign">&#8747;</span>integrand</h1>
+    <p class="lede">Drag a box around the equation you want to solve and then view it in <a
+        href="https://integral-calculator.net">integral-calculator.net</a> or
+      <a href="https://derivative-calculator.net">derivative-calculator.net</a>!
+    </p>
+    <br>
+    <a class="get" href="/integrand.zip">Download the extension</a>
+    <br>
+    <div class="demo">
+      <math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+        <semantics>
+          <mrow>
+            <mo>&#8747;</mo>
+            <mfrac>
+              <mrow>
+                <mn>2</mn>
+                <msup>
+                  <mi>x</mi>
+                  <mn>2</mn>
+                </msup>
+                <mo>+</mo>
+                <mn>7</mn>
+                <mi>x</mi>
+                <mo>&#8722;</mo>
+                <mn>1</mn>
+              </mrow>
+              <mrow>
+                <mi>x</mi>
+                <mo>&#8722;</mo>
+                <mn>4</mn>
+              </mrow>
+            </mfrac>
+            <mo>&#8518;</mo>
+            <mi>x</mi>
+          </mrow>
+          <annotation encoding="application/x-tex">\int \frac{2x^{2}+7x-1}{x-4} \, dx</annotation>
+        </semantics>
+      </math>
+    </div>
+
+    <div class="demo second">
+      <math xmlns="http://www.w3.org/1998/Math/MathML" display="block">
+        <semantics>
+          <mrow>
+            <mfrac>
+              <mrow>
+                <mi>d</mi>
+              </mrow>
+              <mrow>
+                <mi>d</mi>
+                <mi>x</mi>
+              </mrow>
+            </mfrac>
+            <mrow>
+              <mo>(</mo>
+              <msup>
+                <mi>x</mi>
+                <mn>3</mn>
+              </msup>
+              <mo>&#8290;</mo>
+              <mi>ln</mi>
+              <mo>&#8289;</mo>
+              <mo>(</mo>
+              <mi>x</mi>
+              <mo>)</mo>
+              <mo>)</mo>
+            </mrow>
+          </mrow>
+          <annotation encoding="application/x-tex">\frac{d}{dx}\left(x^{3}\ln(x)\right)</annotation>
+        </semantics>
+      </math>
+    </div>
+
+    <footer>
+      <a href="https://dunkirk.sh">Kieran Klukas</a> &middot;
+      <a href="https://github.com/taciturnaxolotl/integrand">source</a> &middot;
+      steps by <a href="https://www.integral-calculator.com/">integral-calculator.com</a>
+      and <a href="https://www.derivative-calculator.net/">derivative-calculator.net</a>
+    </footer>
+
+  </main>
+</body>
+
+</html>

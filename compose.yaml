@@ -1,0 +1,54 @@
+# The converter is the service; the model is an optional companion.
+#
+# Bring up just the converter and snipping reports that OCR is unreachable
+# while /v1/convert and /v1/hint carry on working. That is the intended
+# degraded state, not an accident: the extension can still read maths off a
+# page and still explain a technique with no model anywhere.
+
+services:
+  integrand:
+    build:
+      context: .
+      target: converter
+    image: integrand:0.3.0
+    ports:
+      # Loopback only: this is a local tool, not something to expose. Override
+      # the host side when the dev service already has 8765.
+      - "127.0.0.1:${INTEGRAND_PORT:-8765}:8765"
+    environment:
+      # The extension's origin is not an https one, so a naive allowlist
+      # rejects it. Set this to chrome-extension://<id> once the id is stable.
+      INTEGRAND_ORIGINS: "*"
+      INTEGRAND_OCR: remote
+      INTEGRAND_OCR_URL: http://ocr:8765/v1/ocr
+    restart: unless-stopped
+    read_only: true
+    # read_only leaves nowhere to write, and uvicorn wants a scratch dir.
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    depends_on:
+      ocr:
+        condition: service_started
+
+  ocr:
+    build:
+      context: .
+      target: ocr
+    image: integrand-ocr:0.3.0
+    # Not published. The converter reaches it over the compose network, and
+    # nothing else has any business sending it images.
+    expose:
+      - "8765"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          # Torch will happily use every core and starve the converter that has
+          # to answer the request that is waiting on it.
+          cpus: "4"

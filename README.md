@@ -67,6 +67,110 @@ never runs. See [RECOGNITION.md](RECOGNITION.md).
 > someone else's compute, and it breaks the promise that images never leave
 > your box. Set `INTEGRAND_OCR=pix2tex` before letting anyone else near this.
 
+## Deploying
+
+Two images, built from one tree, because the two halves have nothing in common
+but the code:
+
+| | |
+|---|---|
+| **converter** | sympy, antlr and fastapi — 337MB, starts instantly |
+| **ocr** | the same code plus a model and torch — gigabytes |
+
+They meet at one route, `POST /v1/ocr`: image in, LaTeX out. Splitting them
+means the part that has to be up whenever you snip is the cheap part, the
+expensive part can be moved or switched off without taking the rest down, and
+neither needs redeploying when the other changes.
+
+```sh
+docker compose up -d                        # both
+docker compose up -d --no-deps integrand    # converter only
+INTEGRAND_PORT=8799 docker compose up -d    # when 8765 is already yours
+```
+
+`--no-deps` is load-bearing: `depends_on` would otherwise start the model
+alongside, which is the opposite of what you asked for.
+
+Each half is built with uv and then left behind — the runtime stages start from
+plain python and receive only the virtualenv, so no build toolchain is shipped.
+Both run as a non-root user with `no-new-privileges`, the converter read-only
+with all capabilities dropped, and both carry a healthcheck. The OCR container
+is not published on the host; the converter reaches it over the compose
+network, because nothing else has any business sending it images.
+
+**Bring up the converter alone and it still works.** Snipping reports that OCR
+is unreachable and says which host it tried, while `/v1/convert` and `/v1/hint`
+carry on. Measured with the model not running at all:
+
+```
+POST /v1/convert  → sin(x), verified: true
+POST /v1/hint     → {"technique":"integration by parts","detail":"u = x, dv = e^(x)"}
+POST /v1/snip     → 502 {"error":"ocr_failed",
+                         "detail":"no OCR service at http://ocr:8765/v1/ocr: …"}
+```
+
+That degraded state is intended rather than accidental. The extension can still
+read maths off a page and still name a technique with no model deployed
+anywhere.
+
+Weights are pulled at build time. Downloading them on first use instead would
+make the first snip after every deploy the slow one, and a box with no outbound
+network would look healthy right up until someone used it.
+
+The OCR image takes **CPU torch**. Left alone, uv resolves the CUDA build on
+Linux and drags in fifteen `nvidia-*` packages plus triton — gigabytes of GPU
+libraries the container will never load. `[tool.uv.sources]` points torch at
+PyTorch's CPU index for `sys_platform == 'linux'` only, so macOS resolution is
+untouched:
+
+```
+before   15 nvidia packages, triton
+after    0, and torch 2.13.0+cpu on linux
+```
+
+That is not a compromise for deployment either — MPS measured 2.4x *slower*
+than CPU on this model, which is why CoreML was dropped too.
+
+### On another machine
+
+`compose.yaml` builds from this checkout; `compose.ghcr.yaml` runs published
+images and needs nothing else from the repo, so it can be copied to a host on
+its own:
+
+```sh
+docker push ghcr.io/taciturnaxolotl/integrand:0.3.0
+docker push ghcr.io/taciturnaxolotl/integrand-ocr:0.3.0
+
+# on the host, alongside compose.yaml
+echo "INTEGRAND_BIND=<its tailscale ip>" > .env
+docker compose up -d
+```
+
+`INTEGRAND_BIND` defaults to loopback. Set it to the Tailscale address when
+something else has to reach the service, which keeps it off the LAN either way.
+Pulling is left explicit — `docker compose pull` — so starting and restarting
+need no registry credentials.
+Images are `linux/arm64`, built on Apple silicon for a host of the same shape;
+a different architecture needs `docker buildx --platform`.
+
+### Configuration
+
+| | |
+|---|---|
+| `INTEGRAND_OCR` | `remote`, `pix2tex`, `unimernet`, `symbolab` |
+| `INTEGRAND_OCR_URL` | where `remote` sends images |
+| `INTEGRAND_OCR_TIMEOUT` | seconds to wait on it, default 30 |
+| `INTEGRAND_ORIGINS` | CORS allowlist; set to `chrome-extension://<id>` |
+
+### Why this is still Python
+
+The core is `sympy` and about two hundred lines. `parse_latex`,
+`integral_steps` — which is where the hints come from, grounded in a decision
+the CAS actually made rather than a sentence a model generated — and `apart`
+have no equivalent in another language. Rewriting would mean reimplementing a
+computer algebra system, and the heavy dependency was never the algebra: it was
+the OCR model, which is now a separate image that need not run at all.
+
 ## Testing
 
 ```sh
