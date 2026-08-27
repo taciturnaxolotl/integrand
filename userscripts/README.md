@@ -201,14 +201,46 @@ Two measured rules make that work:
   special case per node type will be wrong about the next node type.
 
   So the selection grows one position at a time and `getSelectionMathML()` says
-  what is actually selected. It stops on its own at an operator, and **a
-  selection that gains no text has escaped into the structure around it** —
-  growing past `12` inside a square root returns the whole `√12`, same text,
-  which is the signal to stop. Measured:
+  what is actually selected. It stops on its own at an operator, and **text is
+  the test for everything else**: a probe that gains some has taken more of the
+  term, one that gains none has escaped into the structure around it. Growing
+  past `12` inside a square root returns the whole `√12`, same text, and the
+  root is not part of the term. Measured:
 
   ```
   len 1  <mn>2</mn>                        len 2  <mn>12</mn>
-  len 3  <msqrt><mn>12</mn></msqrt>        ← same text, escaped: stop at 2
+  len 3  <msqrt><mn>12</mn></msqrt>        ← same text, escaped: keep 2
+  ```
+
+  A probe that gains nothing is skipped rather than final, which is what lets
+  `x^2/` work. Measured on a live box, caret sitting after the `2`:
+
+  ```
+  len 1  <mn>2</mn>
+  len 2  <msup><mrow/><mn>2</mn></msup>     ← same text, and where it used to stop
+  len 3  <msup><mi>x</mi><mn>2</mn></msup>  ← gains the base: take it
+  ```
+
+  The first position past the exponent is the empty base — a boundary, not an
+  answer — and stopping there is what built the fraction *inside* the exponent.
+  One position further is the whole power, so it **lifts into the numerator**.
+  An operator still stops the search outright; that is a different answer from
+  a range the editor would not give, and the two are kept apart.
+
+- **Where the denominator is, also by asking.** `S + L + 2` held only for a flat
+  run of characters. A numerator holding a structure takes one position more
+  than the selection it was made from — measured, `x^2` selects as 3 and sits in
+  the numerator as 4 — so the arithmetic put the caret back in the numerator and
+  the next digit landed beside the power.
+
+  The empty slot is the signal. Growing a selection from the top of the
+  numerator reaches the whole fraction eventually, and the fraction's own
+  denominator is still empty at that moment, so the last selection with nothing
+  empty in it is the numerator:
+
+  ```
+  len 4  <msup><mi>x</mi><mn>2</mn></msup>              ← still the numerator
+  len 5  <mfrac><msup>…</msup><mrow/></mfrac>           ← empty slot: stop at 4
   ```
 
 Given a selection starting at S of length L, the new numerator begins at `S+1`
@@ -227,6 +259,14 @@ and the write queue that version 3 needed are all gone.
   numerator and leaving you in the denominator.
 - **`^` and `_`** script the preceding term.
 - **Pairs** `(`, `[`, `{`, `|`, with the caret inside.
+- **Deleting by term and by line.** <kbd>⌥⌫</kbd> takes the stretch `/` would
+  have lifted — `2sin(x)` in one press, and a `+` stops it — and <kbd>⌘⌫</kbd>
+  takes everything to the left of the caret, leaving anything after it. Away
+  from a Mac, <kbd>ctrl+⌫</kbd> and <kbd>ctrl+shift+⌫</kbd>; no platform
+  sniffing, since neither combination means anything on the other. MathType
+  binds none of them, so all four used to delete a single character. A press
+  with nothing to take is left to the editor rather than swallowed, and plain
+  <kbd>⌫</kbd> is untouched.
 - **`\` commands** with a completion menu: a lone backslash lists everything,
   letters filter it (prefix matches first, so `si` offers `sigma` before
   anything that merely contains those letters), arrows move, Enter/Tab/Space
@@ -234,9 +274,27 @@ and the write queue that version 3 needed are all gone.
   literally typed, so `\pi+` is not silently turned into the highlighted row.
   Covers `\frac`, `\sqrt`, `\nroot`, `\abs` and the Greek alphabet.
 - **Fixes the hyperbolics.** The bug is not ordering, it is timing: a name that
-  is the prefix of a longer one waits 140ms to see whether the rest arrives, and
-  a name with no longer form fires immediately. `log` and `ln` stay instant,
+  is the prefix of a longer one waits 140ms to see whether the rest arrives, so
   `sinh` works.
+
+- **And waits for the editor, not the clock.** Every name has a second wait
+  under it, added in 4.6. MathType applies typed characters on its own
+  schedule and has not applied the one that completed the name by the time the
+  key is handled — measured on a live box, the model still read `<math/>` for
+  *both* letters of `ln` at the moment the parentheses went in:
+
+  ```
+  keydown l   model: <math/>
+  keydown n   model: <math/>
+  settle      model: <math/>       ← parentheses opened here
+  result      <mi>l</mi><mfenced><mi>n</mi></mfenced>      l(n)
+  ```
+
+  So the `n` was typed inside parentheses that had opened where it was going to
+  land. WebAssign's own version avoided this by running on `keyup`; this one
+  polls the model until the name is really there, then opens the parentheses.
+  If the typist has run past the name by then, it leaves the formula alone.
+  Missing parentheses cost a keystroke; late ones wrap the wrong thing.
 
 ### Verified on a live box
 
@@ -250,6 +308,26 @@ x^2             <msup><mi>x</mi><mn>2</mn></msup>
 sinh3t          sinh(3t) — the parenthesis arrives on its own
 ```
 
+Re-measured in 4.6, driving the shipped handler with real keystrokes:
+
+```
+ln     <mi>ln</mi><mfenced><mrow/></mfenced>        was: l(n)
+lnx    <mi>ln</mi><mfenced><mi>x</mi></mfenced>     ln(x)
+sin    <mi>sin</mi><mfenced><mrow/></mfenced>
+sinh   <mi>sinh</mi><mfenced><mrow/></mfenced>      still waits for the h
+2log   <mn>2</mn><mi>log</mi><mfenced><mrow/></mfenced>
+```
+
+And the deletions, real keystrokes into the live editor:
+
+```
+2sin      ⌥⌫    empty            the whole term
+5+12      ctrl+⌫  <mn>5</mn><mo>+</mo>    the operator stops it
+5+12      ⌘⌫    empty
+12+34     ⌘⌫ with the caret after the +   <mn>34</mn>   the tail stays
+123       ⌫     <mn>12</mn>      MathType's own, untouched
+```
+
 And a fraction built inside each kind of structure, which is what the
 position-counting version got wrong:
 
@@ -258,6 +336,20 @@ inside √12      <msqrt><mfrac><mn>12</mn><mn>3</mn></mfrac></msqrt>
 inside √(5+12)  <msqrt><mn>5</mn><mo>+</mo><mfrac><mn>12</mn>…
 inside (5+12)   <mfenced><mrow><mn>5</mn><mo>+</mo><mfrac>…
 inside x^12     <msup><mi>x</mi><mfrac><mn>12</mn><mn>3</mn></mfrac></msup>
+```
+
+Since 4.6 the last of those is deliberately no longer the case: a `/` typed
+straight after `x^2` takes the whole power as the numerator, because that is
+what it looks like it should do. A fraction *inside* an exponent is built with
+`\frac`. Re-measured on the same live editor, driving the shipped functions:
+
+```
+x^2/9     <mfrac><msup><mi>x</mi><mn>2</mn></msup><mn>9</mn></mfrac>
+x^12/97   <mfrac><msup><mi>x</mi><mn>12</mn></msup><mn>97</mn></mfrac>
+x_2/9     <mfrac><msub><mi>x</mi><mn>2</mn></msub><mn>9</mn></mfrac>
+1/2/3     <mfrac><mfrac><mn>1</mn><mn>2</mn></mfrac><mn>3</mn></mfrac>
+5+12/97   <mn>5</mn><mo>+</mo><mfrac><mn>12</mn><mn>97</mn></mfrac>
+inside √12  <msqrt><mfrac><mn>12</mn><mn>9</mn></mfrac></msqrt>   unchanged
 ```
 
 **MathType still generates the MathML that gets submitted**, so nothing here

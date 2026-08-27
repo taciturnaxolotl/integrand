@@ -2,7 +2,7 @@
 // @name         WebAssign nice entry
 // @author       Kieran Klukas
 // @namespace    dunkirk.sh
-// @version      4.5.0
+// @version      4.6.0
 // @description  Restores MathQuill-style typing to WebAssign's MathType boxes.
 // @match        *://*.webassign.net/*
 // @run-at       document-idle
@@ -159,15 +159,21 @@
 	//: turn one keystroke into an unbounded loop.
 	const MAX_TERM = 40;
 
-	//: The text of a selection, or null if the selection has run past the term:
-	//: into an operator, or off the front of the formula.
+	//: Two ways a probe can fail, and they mean opposite things. Reaching an
+	//: operator is the end of the term and stops the search; a selection that
+	//: cannot be read is one range the editor would not give, and the next one
+	//: may still be fine.
+	const PAST_TERM = Symbol("past the term");
+	const UNREADABLE = Symbol("not a selection we can read");
+
+	//: The text of a selection, or one of the two above.
 	function settled(selection) {
 		const doc = new DOMParser().parseFromString(selection || "", "text/xml");
-		if (doc.querySelector("parsererror")) return null;
+		if (doc.querySelector("parsererror")) return UNREADABLE;
 		for (const node of doc.documentElement.childNodes) {
-			if (node.nodeName === "mspace") return null;
+			if (node.nodeName === "mspace") return UNREADABLE;
 			if (node.nodeName === "mo" && BREAKS.has(node.textContent.trim()))
-				return null;
+				return PAST_TERM;
 		}
 		return doc.documentElement.textContent;
 	}
@@ -182,9 +188,19 @@
 	//: about the next one.
 	//:
 	//: So grow the selection a position at a time and read back what MathType
-	//: says is selected. It stops on its own at an operator, and a selection that
-	//: gains no text has escaped into the structure around it — `12` inside a
-	//: square root becomes the whole `√12` rather than anything longer.
+	//: says is selected. It stops on its own at an operator, and text is the
+	//: test for everything else: a selection that gains some has taken more of
+	//: the term, and one that gains none has escaped into the structure around
+	//: it — `12` inside a square root becomes the whole `√12`, same text, and
+	//: the root is not part of the term.
+	//:
+	//: A probe that gains nothing is skipped rather than final. Growing out of a
+	//: superscript is the case that made the difference: `x^2` then `/` used to
+	//: build the fraction inside the exponent, because the first position past
+	//: the `2` is a boundary and the search stopped there. Two positions past it
+	//: is `x2`, which gains the base, so the whole power lifts into the
+	//: numerator — which is what `x^2/` looks like it should do.
+	//:
 	//: One transaction around the whole search, not one per probe. Each
 	//: begin/end pair is a repaint, and a term of any length was costing a
 	//: repaint per position — a single keystroke could redraw the formula dozens
@@ -204,13 +220,61 @@
 					model.setCaret(caret - length, length);
 					text = settled(model.getSelectionMathML());
 				} catch {
-					break;
+					// A range the editor will not take says nothing about the next
+					// one; a boundary is exactly where that happens.
+					continue;
 				}
-				if (text === null || text.length <= seen.length) break;
+				if (text === PAST_TERM) break;
+				if (text === UNREADABLE || text.length <= seen.length) continue;
 				seen = text;
 				best = length;
 			}
 		} finally {
+			// The caret goes back before the transaction closes. Ending one on a
+			// selection the editor could not make throws out of the release, and
+			// that is the deadlock this file exists to avoid.
+			try {
+				model.setCaret(caret, 0);
+			} catch {}
+			model.endEventTransaction();
+		}
+		return best;
+	}
+
+	//: Where a slot's content ends, counted the same way: by asking. The
+	//: arithmetic that used to place the caret — denominator at `S + L + 2` —
+	//: held only for a flat run of characters. A numerator holding a structure
+	//: takes one position more than the selection it came from, so `x^2/` put
+	//: the denominator inside the numerator and the next digit landed beside
+	//: the power.
+	//:
+	//: An empty slot is the signal. Growing a selection from the start of the
+	//: numerator reaches the whole fraction eventually, and the fraction still
+	//: has an empty denominator at that moment — so the last selection with
+	//: nothing empty in it is the numerator itself.
+	function slotLength(model, from) {
+		let best = 0;
+		model.beginEventTransaction();
+		try {
+			for (let length = 1; length <= MAX_TERM; length++) {
+				let filled = false;
+				try {
+					model.setCaret(from, length);
+					const doc = new DOMParser().parseFromString(
+						model.getSelectionMathML() || "",
+						"text/xml",
+					);
+					filled =
+						!doc.querySelector("parsererror") &&
+						!doc.querySelector("mrow:empty, mspace");
+				} catch {}
+				if (!filled) break;
+				best = length;
+			}
+		} finally {
+			try {
+				model.setCaret(from, 0);
+			} catch {}
 			model.endEventTransaction();
 		}
 		return best;
@@ -245,13 +309,56 @@
 		return withModel((found, model) => {
 			const caret = model.getCaret();
 			const span = termLength(model, caret);
-			const start = caret - span;
-			// termLength leaves a selection behind; put it back if it found nothing.
-			setCaret(model, start, span);
+			setCaret(model, caret - span, span);
 			found.action("fraction");
-			// Nothing to lift means an empty fraction, and the numerator is where you
-			// would expect to be typing.
-			setCaret(model, span > 0 ? start + span + 2 : start + 1, 0);
+			// The action leaves the caret at the top of the numerator. The
+			// denominator is one position past where the numerator ends, and
+			// nothing to lift means an empty fraction with the numerator as the
+			// place you would expect to be typing.
+			const numerator = model.getCaret();
+			setCaret(
+				model,
+				span > 0 ? numerator + slotLength(model, numerator) + 1 : numerator,
+				0,
+			);
+		});
+	}
+
+	//: Deleting, the two ways every other text field does it. MathType binds
+	//: neither: ⌘⌫ and ⌥⌫ reach the page as plain keys and it takes one
+	//: character for each, which is the same as pressing ⌫.
+	const deleteSelection = (model) => {
+		model.beginEventTransaction();
+		try {
+			model.deleteSelection();
+		} finally {
+			model.endEventTransaction();
+		}
+	};
+
+	//: A term is the stretch `/` would have lifted into a numerator, so the two
+	//: keys agree about where one begins — `2sin(x)` goes in one press, and a
+	//: `+` stops it the same way. With nothing to take it takes one position, so
+	//: the key is never dead while there is something to its left.
+	function deleteTerm() {
+		return withModel((found, model) => {
+			const caret = model.getCaret();
+			if (!caret) return false;
+			const span = termLength(model, caret) || 1;
+			setCaret(model, caret - span, span);
+			deleteSelection(model);
+		});
+	}
+
+	//: Everything to the left of the caret, the way ⌘⌫ empties a line. What is
+	//: to the right of it stays, and from inside a root or a script it takes
+	//: the whole thing, which is where the line really began.
+	function deleteToStart() {
+		return withModel((found, model) => {
+			const caret = model.getCaret();
+			if (!caret) return false;
+			setCaret(model, 0, caret);
+			deleteSelection(model);
 		});
 	}
 
@@ -321,14 +428,44 @@
 	];
 
 	//: The fix is not ordering, it is waiting. A name that is the start of a
-	//: longer one holds back to see whether the rest arrives; one with no longer
-	//: form fires at once, so log and ln stay instant and sinh works.
+	//: longer one holds back to see whether the rest arrives, so sinh works.
 	const AMBIGUOUS = new Set(
 		FUNCTIONS.filter((name) =>
 			FUNCTIONS.some((other) => other !== name && other.startsWith(name)),
 		),
 	);
 	const SETTLE_MS = 140;
+
+	//: A name with no longer form has nothing to wait for from the typist, so it
+	//: settles on the next tick — but off the keystroke, not during it.
+	const SETTLE_NOW = 0;
+
+	//: And then it waits for the editor. MathType applies typed characters on
+	//: its own schedule and has not applied the one that completed the name by
+	//: the time the key is handled: measured on a live box, the model still read
+	//: `<math/>` for both letters of `ln`. Opening the parentheses then put them
+	//: where the `n` had not landed yet, and the `n` was typed inside — `l(n)`,
+	//: which is what "it turns the l into a function" looks like.
+	//:
+	//: So the trigger is the model rather than the clock. Poll until the name is
+	//: really there, and if the typist has run past it in the meantime, leave it
+	//: alone: parentheses that arrive late land in the wrong place, and no
+	//: parentheses is a keystroke, while wrong ones are a repair.
+	const CAUGHT_UP_MS = 400;
+	const POLL_MS = 8;
+
+	//: What the formula says, as text. `getMathML` is well-formed, so this is
+	//: the same read as `settled` does of a selection.
+	function typedText(found) {
+		try {
+			const doc = new DOMParser().parseFromString(found.getMathML() || "", "text/xml");
+			return doc.querySelector("parsererror")
+				? ""
+				: doc.documentElement.textContent;
+		} catch {
+			return "";
+		}
+	}
 
 	// ---- the command menu ----------------------------------------------------------
 
@@ -457,9 +594,24 @@
 
 	function settleFunction(field) {
 		const { term } = ask(field);
-		if (!FUNCTIONS.some((name) => term.endsWith(name))) return;
+		const name = FUNCTIONS.find((fn) => term.endsWith(fn));
+		if (!name) return;
 		state.set(field, { ...ask(field), term: "" });
-		insert("parenthesis");
+
+		const start = Date.now();
+		const before = typedText(editor()).length;
+		const whenTyped = () => {
+			const found = editor();
+			if (!found) return;
+			const text = typedText(found);
+			if (text.endsWith(name)) return insert("parenthesis");
+			// Grown past the name means the typist got there first, and late
+			// parentheses would land around whatever followed.
+			if (text.length > before + name.length) return;
+			if (Date.now() - start > CAUGHT_UP_MS) return;
+			setTimeout(whenTyped, POLL_MS);
+		};
+		whenTyped();
 	}
 
 	function onKeyDown(event) {
@@ -467,9 +619,29 @@
 		const here = ask(field);
 		focused = field;
 
-		if (event.metaKey || event.ctrlKey || event.altKey) return;
 		// With no editor to drive, every key is left exactly as the page sent it.
 		if (!editor()) return;
+
+		// --- deleting -----------------------------------------------------------------
+		//: ⌘⌫ and ⌥⌫, and what those become away from a Mac: ctrl+⌫ for a term,
+		//: ctrl+shift+⌫ for the line. No platform sniffing, because neither
+		//: spare combination means anything on the other one. A press with
+		//: nothing to take is left to the editor rather than swallowed.
+		if (event.key === "Backspace" && here.command === null) {
+			const toStart = event.metaKey || (event.ctrlKey && event.shiftKey);
+			const byTerm = event.altKey || event.ctrlKey;
+			if (toStart || byTerm) {
+				const took = toStart ? deleteToStart() : deleteTerm();
+				state.set(field, { ...here, term: "" });
+				if (took) {
+					event.preventDefault();
+					event.stopPropagation();
+				}
+				return;
+			}
+		}
+
+		if (event.metaKey || event.ctrlKey || event.altKey) return;
 
 		// --- backslash command mode -------------------------------------------------
 		if (here.command !== null) {
@@ -551,13 +723,13 @@
 
 		const term = (here.term + event.key.toLowerCase()).slice(-8);
 		clearTimeout(here.timer);
-		const timer = FUNCTIONS.some(
+		const wait = FUNCTIONS.some(
 			(name) => AMBIGUOUS.has(name) && term.endsWith(name),
 		)
-			? setTimeout(() => settleFunction(field), SETTLE_MS)
-			: 0;
+			? SETTLE_MS
+			: SETTLE_NOW;
+		const timer = setTimeout(() => settleFunction(field), wait);
 		state.set(field, { ...here, term, timer });
-		if (!timer) settleFunction(field);
 	}
 
 	function adopt(field) {
@@ -587,6 +759,6 @@
 	}
 
 	console.log(
-		"[better-entry] 4.5 — native fractions, scripts, fences, command menu, unsticking, answer guard",
+		"[better-entry] 4.6 — native fractions, scripts, fences, deletion, command menu, unsticking, answer guard",
 	);
 })();
