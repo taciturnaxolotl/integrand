@@ -22,6 +22,12 @@ Then load `extension/` unpacked: `chrome://extensions` → developer mode →
 **Load unpacked**. Drag over a problem, check what it read, hit **Open
 calculator**.
 
+Out of the box it talks to `https://integrand.dunkirk.sh`, so it works before
+you have run anything. To use the service above, put
+`http://localhost:8765` in the options page and save — saving asks for
+permission to reach that host, since it is no longer one the extension ships
+with.
+
 **Hint?** sits under every result. Clicking it names the technique — *try a
 substitution*, *integration by parts* — and clicking again gives up *u = ln(x)*.
 Three steps, each asked for, because that a hint exists gives nothing away and
@@ -43,6 +49,13 @@ Four ways to start a snip:
 - <kbd>⌘⇧Y</kbd> / <kbd>Ctrl+Shift+Y</kbd>
 - right-click → **Snip this maths problem**
 - the **∫** on the right edge, on sites you have opted into
+
+The first three carry Chrome's `activeTab` with them, which is what allows a
+screenshot. The **∫** is a button on the page and carries nothing, so from
+there a click on an expression the page already knows works and dragging a
+rectangle has nothing to photograph with. **Screenshots** in the options page
+trades that for a standing grant on every site; it ships off, and the panel
+says which key to press instead.
 
 Nine homework sites ship switched on — WebAssign, MyOpenMath, Canvas,
 DeltaMath, Gradescope, Khan Academy, Wikipedia, math.stackexchange, OpenStax —

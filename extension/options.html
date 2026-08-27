@@ -7,138 +7,313 @@
      as actionable. */
   :root {
     color-scheme: light dark;
-    --paper:  oklch(97.5% 0.014 85);
+    --paper: oklch(97.5% 0.014 85);
     --raised: oklch(99% 0.008 85);
-    --sunk:   oklch(94.5% 0.018 85);
-    --ink:    oklch(24% 0.012 60);
-    --muted:  oklch(52% 0.020 70);
-    --line:   oklch(88% 0.018 80);
+    --sunk: oklch(94.5% 0.018 85);
+    --ink: oklch(24% 0.012 60);
+    --muted: oklch(52% 0.020 70);
+    --line: oklch(88% 0.018 80);
     --accent: oklch(48% 0.075 225);
     --accent-ink: oklch(99% 0 0);
-    --good:   oklch(52% 0.105 145);
+    --good: oklch(52% 0.105 145);
     --shadow: 0 1px 2px oklch(24% 0.012 60 / 0.06), 0 8px 24px oklch(24% 0.012 60 / 0.06);
   }
+
   @media (prefers-color-scheme: dark) {
     :root {
-      --paper:  oklch(19% 0.012 250);
+      --paper: oklch(19% 0.012 250);
       --raised: oklch(23% 0.013 250);
-      --sunk:   oklch(16% 0.012 250);
-      --ink:    oklch(94% 0.012 85);
-      --muted:  oklch(68% 0.020 80);
-      --line:   oklch(32% 0.014 250);
+      --sunk: oklch(16% 0.012 250);
+      --ink: oklch(94% 0.012 85);
+      --muted: oklch(68% 0.020 80);
+      --line: oklch(32% 0.014 250);
       --accent: oklch(78% 0.095 220);
       --accent-ink: oklch(18% 0.02 240);
-      --good:   oklch(80% 0.130 145);
+      --good: oklch(80% 0.130 145);
       --shadow: 0 1px 2px oklch(0% 0 0 / 0.3), 0 10px 30px oklch(0% 0 0 / 0.28);
     }
   }
 
-  * { box-sizing: border-box; }
+  * {
+    box-sizing: border-box;
+  }
+
   body {
-    margin: 0; padding: 5rem 1.5rem 7rem; background: var(--paper); color: var(--ink);
+    margin: 0;
+    padding: 5rem 1.5rem 7rem;
+    background: var(--paper);
+    color: var(--ink);
     font: 16px/1.6 ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     -webkit-font-smoothing: antialiased;
   }
-  main { max-width: 38rem; margin: 0 auto; }
 
-  header { display: flex; align-items: baseline; gap: .6rem; margin-bottom: .3rem; }
-  .glyph { font-size: 2.1rem; line-height: 1; color: var(--accent); }
-  h1 { font-size: 1.75rem; font-weight: 600; letter-spacing: -0.015em; margin: 0; }
-  .tagline { color: var(--muted); margin: 0 0 3.5rem; font-size: 1.02rem; }
+  main {
+    max-width: 38rem;
+    margin: 0 auto;
+  }
 
-  section { margin-bottom: 3.5rem; }
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: .6rem;
+    margin-bottom: .3rem;
+  }
+
+  .glyph {
+    font-size: 2.1rem;
+    line-height: 1;
+    color: var(--accent);
+  }
+
+  h1 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    margin: 0;
+  }
+
+  .tagline {
+    color: var(--muted);
+    margin: 0 0 3.5rem;
+    font-size: 1.02rem;
+  }
+
+  section {
+    margin-bottom: 3.5rem;
+  }
+
   h2 {
     font: 600 0.72rem/1 ui-sans-serif, system-ui, sans-serif;
-    letter-spacing: .13em; text-transform: uppercase; color: var(--muted);
-    margin: 0 0 .55rem; display: flex; align-items: center; gap: .9rem;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 .55rem;
+    display: flex;
+    align-items: center;
+    gap: .9rem;
   }
-  h2::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-  .lede { color: var(--muted); margin: 0 0 1.4rem; font-size: .95rem; }
+
+  h2::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+
+  .lede {
+    color: var(--muted);
+    margin: 0 0 1.4rem;
+    font-size: .95rem;
+  }
 
   .card {
-    background: var(--raised); border: 1px solid var(--line);
-    border-radius: 12px; box-shadow: var(--shadow); overflow: hidden;
+    background: var(--raised);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
   }
-  .card + .card { margin-top: 1rem; }
+
+  .card+.card {
+    margin-top: 1rem;
+  }
 
   .site {
-    display: flex; align-items: center; gap: 1rem;
-    padding: .85rem 1.1rem; border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: .85rem 1.1rem;
+    border-top: 1px solid var(--line);
   }
-  .site:first-child { border-top: 0; }
+
+  .site:first-child {
+    border-top: 0;
+  }
+
   .site .host {
-    flex: 1; min-width: 0; font: .9rem/1.4 ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+    font: .9rem/1.4 ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  .site .note { font-size: .82rem; color: var(--muted); }
+
+  .site .note {
+    font-size: .82rem;
+    color: var(--muted);
+  }
 
   button {
     font: 500 .85rem/1 ui-sans-serif, system-ui, sans-serif;
-    padding: .5rem .9rem; border-radius: 7px; cursor: pointer;
-    border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+    padding: .5rem .9rem;
+    border-radius: 7px;
+    cursor: pointer;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: var(--accent-ink);
     transition: opacity .12s ease, background .12s ease, border-color .12s ease;
   }
+
   button:hover:not(:disabled) {
     background: color-mix(in oklch, var(--accent) 84%, var(--ink));
     border-color: color-mix(in oklch, var(--accent) 84%, var(--ink));
   }
-  button:active:not(:disabled) { background: color-mix(in oklch, var(--accent) 72%, var(--ink)); }
-  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  button.quiet {
-    background: transparent; color: var(--muted); border-color: var(--line);
+
+  button:active:not(:disabled) {
+    background: color-mix(in oklch, var(--accent) 72%, var(--ink));
   }
+
+  button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  button.quiet {
+    background: transparent;
+    color: var(--muted);
+    border-color: var(--line);
+  }
+
   button.quiet:hover {
-    color: var(--ink); border-color: var(--muted);
+    color: var(--ink);
+    border-color: var(--muted);
     background: color-mix(in oklch, var(--ink) 6%, transparent);
   }
-  button.quiet:active { background: color-mix(in oklch, var(--ink) 12%, transparent); }
+
+  button.quiet:active {
+    background: color-mix(in oklch, var(--ink) 12%, transparent);
+  }
 
   /* Solid accent is reserved for the one primary action in view. */
-  .switch { position: relative; display: inline-flex; flex: none; cursor: pointer; }
-  .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
-  .track {
-    width: 38px; height: 22px; border-radius: 11px; background: var(--sunk);
-    border: 1px solid var(--line); transition: background .15s ease, border-color .15s ease;
+  .switch {
+    position: relative;
+    display: inline-flex;
+    flex: none;
+    cursor: pointer;
   }
+
+  .switch input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .track {
+    width: 38px;
+    height: 22px;
+    border-radius: 11px;
+    background: var(--sunk);
+    border: 1px solid var(--line);
+    transition: background .15s ease, border-color .15s ease;
+  }
+
   .track::after {
-    content: ""; position: absolute; top: 4px; left: 4px;
-    width: 14px; height: 14px; border-radius: 50%; background: var(--muted);
+    content: "";
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--muted);
     transition: transform .15s ease, background .15s ease;
   }
-  .switch:hover .track { border-color: var(--muted); }
-  .switch input:checked + .track { background: var(--accent); border-color: var(--accent); }
-  .switch:hover input:checked + .track {
+
+  .switch:hover .track {
+    border-color: var(--muted);
+  }
+
+  .switch input:checked+.track {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .switch:hover input:checked+.track {
     background: color-mix(in oklch, var(--accent) 84%, var(--ink));
     border-color: color-mix(in oklch, var(--accent) 84%, var(--ink));
   }
-  .switch input:checked + .track::after { transform: translateX(16px); background: var(--accent-ink); }
-  .switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  .empty { padding: 1.3rem 1.1rem; color: var(--muted); font-size: .93rem; }
+  .switch input:checked+.track::after {
+    transform: translateX(16px);
+    background: var(--accent-ink);
+  }
 
-  .field { display: flex; gap: .7rem; align-items: center; }
+  .switch input:focus-visible+.track {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .empty {
+    padding: 1.3rem 1.1rem;
+    color: var(--muted);
+    font-size: .93rem;
+  }
+
+  .field {
+    display: flex;
+    gap: .7rem;
+    align-items: center;
+  }
+
   input {
-    flex: 1; padding: .62rem .75rem; border-radius: 7px;
-    border: 1px solid var(--line); background: var(--sunk); color: var(--ink);
+    flex: 1;
+    padding: .62rem .75rem;
+    border-radius: 7px;
+    border: 1px solid var(--line);
+    background: var(--sunk);
+    color: var(--ink);
     font: .88rem ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
   }
-  input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
-  .said { color: var(--good); font-size: .85rem; min-width: 3rem; }
+
+  input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+  }
+
+  .said {
+    color: var(--good);
+    font-size: .85rem;
+    min-width: 3rem;
+  }
 
   kbd {
-    font: .8rem ui-monospace, "SF Mono", Menlo, monospace; padding: .1rem .38rem;
-    border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px;
-    background: var(--sunk); color: var(--ink);
+    font: .8rem ui-monospace, "SF Mono", Menlo, monospace;
+    padding: .1rem .38rem;
+    border: 1px solid var(--line);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    background: var(--sunk);
+    color: var(--ink);
   }
+
+  /* Sent here from a failed crop: say which switch it meant, once. */
+  @keyframes settle { from { box-shadow: 0 0 0 2px var(--accent); } to { box-shadow: 0 0 0 2px transparent; } }
+  .flash { animation: settle 1.8s ease-out; }
 
   /* The banner only exists when you arrived from the icon menu. */
   .offer {
-    display: flex; align-items: center; gap: 1rem; margin-bottom: 1.4rem;
-    padding: 1rem 1.1rem; border-radius: 12px;
-    border: 1px solid var(--accent); background: var(--sunk);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.4rem;
+    padding: 1rem 1.1rem;
+    border-radius: 12px;
+    border: 1px solid var(--accent);
+    background: var(--sunk);
   }
-  .offer .host { flex: 1; font: .95rem ui-monospace, "SF Mono", Menlo, monospace; }
-  .offer[hidden] { display: none; }
+
+  .offer .host {
+    flex: 1;
+    font: .95rem ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .offer[hidden] {
+    display: none;
+  }
 </style>
 
 <main>
@@ -146,17 +321,12 @@
     <span class="glyph">∫</span>
     <h1>integrand</h1>
   </header>
-  <p class="tagline">Snip a maths problem, land on a step-by-step solver with it filled in.</p>
+  <p class="tagline">Snip a maths problem faster than ever</p>
 
   <section>
-    <h2>Where the ∫ appears</h2>
+    <h2>Allowed sites</h2>
     <p class="lede">
-      A small <b>∫</b> waits at the right edge of these sites — and only on pages
-      where it actually finds maths, so a login page stays clean. Snipping works
-      everywhere regardless: the toolbar button, <kbd>⌘⇧Y</kbd>, or right-click →
-      <i>Snip this maths problem</i>. To add a site, open it and right-click the
-      toolbar icon.
-    </p>
+      A small <b>∫</b> sits at the right edge of these sites allowing you to snip from the page</p>
 
     <div class="offer" id="offer" hidden>
       <span class="host" id="offer-host"></span>
@@ -168,9 +338,25 @@
   </section>
 
   <section>
+    <h2>Screenshots</h2>
+    <p class="lede">
+      Chrome only lets the extension screenshot the page if its activated from the menu bar or right click. Since the ∫
+      is a button inside the page permission must be requested for all pages for it to work.
+    </p>
+    <div class="card">
+      <div class="site">
+        <span class="host">Let the ∫ take screenshots</span>
+        <span class="note" id="capture-said"></span>
+        <label class="switch" id="capture-toggle" title="Costs a standing grant to read every site">
+          <input type="checkbox" id="capture"><span class="track"></span>
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <section>
     <h2>Service</h2>
-    <p class="lede">Where images and LaTeX are sent. Point this at your own box
-      and you stop using anyone else's compute.</p>
+    <p class="lede">Where images and LaTeX are sent. Feel free to use the hosted version or run your own</p>
     <div class="field">
       <input id="endpoint" spellcheck="false" aria-label="Service endpoint">
       <button id="save">Save</button>

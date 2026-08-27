@@ -10,8 +10,6 @@
     "contextMenus"
   ],
   "host_permissions": [
-    "http://localhost/*",
-    "http://127.0.0.1/*",
     "*://integrand.dunkirk.sh/*",
     "*://*.webassign.net/*",
     "*://*.myopenmath.com/*",
@@ -42,6 +40,7 @@
   },
   "options_page": "options.html",
   "optional_host_permissions": [
+    "<all_urls>",
     "*://*/*"
   ],
   "commands": {

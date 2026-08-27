@@ -90,6 +90,9 @@
     .hidden { display: none; }
 
     .note { margin-top: 6px; font-size: 11.5px; color: var(--bad); }
+    .note button { font: inherit; padding: 0; border: 0; background: none;
+                   color: var(--accent); cursor: pointer; text-decoration: underline;
+                   text-underline-offset: 2px; }
 
     /* Carries the offer from the start, so the row is occupied rather than
        held open for something that has not arrived. */
@@ -337,7 +340,27 @@
     const { dataUrl, error } = await chrome.runtime.sendMessage({ type: "capture" });
     globalThis.integrandAnchor?.setHidden(false);
     if (error) {
-      return showPanel(`<div class="note">Could not capture the tab: ${escape(error)}</div>`, "failed", "bad");
+      // Chrome hands out the screenshot for a snip started through the
+      // extension — the toolbar button, the shortcut, the right-click menu —
+      // or to an extension allowed on every site. The ∫ is the page's button
+      // and grants neither, so say which key does rather than repeat Chrome.
+      if (!/all_urls|activeTab/.test(error)) {
+        return showPanel(`<div class="note">Could not capture the tab: ${escape(error)}</div>`, "failed", "bad");
+      }
+      const shortcut = navigator.platform.startsWith("Mac") ? "⌘⇧Y" : "Ctrl+Shift+Y";
+      showPanel(
+        `<div class="note">Chrome only allows the screenshot for a snip you start
+         from the extension. Press <b>${shortcut}</b> and drag again, or
+         <button class="settings">let the ∫ take screenshots</button>.</div>`,
+        "failed",
+        "bad",
+      );
+      // The options page is the only place the permission can be asked for, and
+      // the switch is below the fold, so it is told which one to point at.
+      body.querySelector(".settings").addEventListener("click", () =>
+        chrome.runtime.sendMessage({ type: "options", at: "capture" }),
+      );
+      return;
     }
 
     const image = await crop_(dataUrl, rect);

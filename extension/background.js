@@ -2,7 +2,7 @@
 // No canvas here — MV3 workers have none. The crop happens in the content
 // script, which has a full DOM.
 
-const DEFAULT_ENDPOINT = "http://localhost:8765";
+const DEFAULT_ENDPOINT = "https://integrand.dunkirk.sh";
 
 async function endpoint() {
   const { endpoint } = await chrome.storage.local.get("endpoint");
@@ -48,12 +48,14 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 // Derived from the granted permissions rather than tracked alongside them, so
 // revoking a site in Chrome's own UI takes the button with it. The bundled
 // sites are required permissions and cannot be revoked there; `offSites` is
-// what turns those off.
+// what turns those off. Two grants are not sites: a localhost one is the
+// service, pointed at someone's own box, and `<all_urls>` is the screenshot
+// permission the ∫ needs to crop — neither is a page to put the button on.
 async function syncAnchorSites() {
   const granted = await chrome.permissions.getAll();
   const { offSites = [] } = await chrome.storage.local.get("offSites");
   const matches = (granted.origins ?? [])
-    .filter((o) => !/localhost|127\.0\.0\.1/.test(o))
+    .filter((o) => o !== "<all_urls>" && !/localhost|127\.0\.0\.1/.test(o))
     .filter((o) => !offSites.includes(o));
 
   const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [ANCHOR_SCRIPT] });
@@ -126,6 +128,15 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
         : { dataUrl });
     });
     return true;
+  }
+
+  // Only an extension page can ask for a permission, and only the worker can
+  // open one. `at` travels the same way the icon menu's host does.
+  if (message.type === "options") {
+    chrome.storage.session
+      .set({ focus: message.at ?? "" })
+      .then(() => chrome.runtime.openOptionsPage());
+    return;
   }
 
   if (message.type === "snip") {

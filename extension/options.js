@@ -1,4 +1,4 @@
-const DEFAULT_ENDPOINT = "http://localhost:8765";
+const DEFAULT_ENDPOINT = "https://integrand.dunkirk.sh";
 
 // Where the LaTeX comes from on each bundled site. The page reader handles
 // all of them directly, which is why they ship switched on.
@@ -15,9 +15,11 @@ const SOURCE = {
   "*://openstax.org/*": "MathML",
 };
 
-// The manifest's own localhost grants land in permissions.getAll() too; they
-// are the service, not a site the button belongs on.
-const isSite = (origin) => !/localhost|127\.0\.0\.1/.test(origin);
+// Two grants in here are not sites. A localhost one is only ever there because
+// someone pointed the service at their own box, and `<all_urls>` is the
+// screenshot permission below — neither is a place the ∫ belongs.
+const isSite = (origin) =>
+  origin !== "<all_urls>" && !/localhost|127\.0\.0\.1/.test(origin);
 const label = (origin) => origin.replace(/^\*:\/\//, "").replace(/\/\*$/, "");
 const patternFor = (host) => `*://${host}/*`;
 
@@ -78,11 +80,48 @@ async function paint() {
   if (!origins.length) {
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.textContent = "No sites. Open one and right-click the toolbar icon to add it.";
+    empty.textContent = "No sites yet. Open one and right-click the toolbar icon.";
     list.append(empty);
     return;
   }
   for (const origin of origins) list.append(siteRow(origin, !off.includes(origin)));
+}
+
+// Chrome grants the screenshot only two ways: `activeTab`, which comes from
+// starting the snip through the extension, or a standing grant of every host.
+// The ∫ on the page can offer neither, so cropping from it needs this. It is a
+// switch rather than a prompt at the moment of failure, because agreeing to
+// read every site should not be something you do mid-drag to get on with a
+// problem.
+const EVERYWHERE = { origins: ["<all_urls>"] };
+const capture = document.getElementById("capture");
+const captureSaid = document.getElementById("capture-said");
+
+async function paintCapture() {
+  capture.checked = await chrome.permissions.contains(EVERYWHERE);
+  captureSaid.textContent = capture.checked ? "reads every site" : "";
+}
+
+// No await before the request: the click is what allows it to be asked, and
+// awaiting anything first spends it.
+capture.addEventListener("change", async () => {
+  const wanted = capture.checked;
+  const settled = wanted
+    ? await chrome.permissions.request(EVERYWHERE)
+    : !(await chrome.permissions.remove(EVERYWHERE));
+  if (settled !== wanted) capture.checked = settled;
+  captureSaid.textContent = settled ? "reads every site" : "";
+});
+
+// Arriving from a crop that could not photograph the tab. The switch it was
+// talking about is below the fold, so say which one it meant.
+async function focusFromPanel() {
+  const { focus } = await chrome.storage.session.get("focus");
+  await chrome.storage.session.remove("focus");
+  if (focus !== "capture") return;
+  const card = capture.closest(".card");
+  card.scrollIntoView({ block: "center", behavior: "smooth" });
+  card.classList.add("flash");
 }
 
 // Asking for a host permission needs an extension page and a real click, and
@@ -109,7 +148,7 @@ async function offerHostFromMenu() {
       said.textContent = "not granted";
       return;
     }
-    said.textContent = "added — reload the page to see it";
+    said.textContent = "added — reload the page";
     grant.remove();
   });
 }
@@ -119,6 +158,7 @@ async function offerHostFromMenu() {
 // reload. This also catches changes made in Chrome's own permissions UI.
 function repaintOnPermissionChange() {
   chrome.runtime.sendMessage({ type: "sync-anchor-sites" }).catch(() => {}).finally(paint);
+  paintCapture();
 }
 chrome.permissions.onAdded.addListener(repaintOnPermissionChange);
 chrome.permissions.onRemoved.addListener(repaintOnPermissionChange);
@@ -127,13 +167,35 @@ chrome.storage.local.get("endpoint").then(({ endpoint }) => {
   document.getElementById("endpoint").value = endpoint || DEFAULT_ENDPOINT;
 });
 
+// A service somewhere else is a host the extension has no permission for, and
+// the save click is the gesture that can ask for one. Asking here rather than
+// at the first request keeps the failure at the moment you chose the address,
+// where it is legible, instead of inside a snip that quietly returns nothing.
+async function reach(value) {
+  let origins;
+  try {
+    origins = [`${new URL(value).origin}/*`];
+  } catch {
+    return "not a URL";
+  }
+  // Straight to request, with no `contains` before it: an await spends the
+  // click, and asking for something already granted resolves at once anyway.
+  return (await chrome.permissions.request({ origins }))
+    ? "saved"
+    : "saved, but can't reach it";
+}
+
 document.getElementById("save").addEventListener("click", async () => {
   const said = document.getElementById("saved");
-  const value = document.getElementById("endpoint").value.trim();
-  await chrome.storage.local.set({ endpoint: value || DEFAULT_ENDPOINT });
-  said.textContent = "saved";
-  setTimeout(() => (said.textContent = ""), 1600);
+  const value = document.getElementById("endpoint").value.trim() || DEFAULT_ENDPOINT;
+  said.textContent = await reach(value);
+  if (said.textContent !== "not a URL") {
+    await chrome.storage.local.set({ endpoint: value });
+  }
+  setTimeout(() => (said.textContent = ""), 2400);
 });
 
 paint();
+paintCapture();
 offerHostFromMenu();
+focusFromPanel();
