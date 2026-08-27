@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "integrand",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Snip a math problem, land on a step-by-step solver with it filled in.",
   "permissions": [
     "activeTab",

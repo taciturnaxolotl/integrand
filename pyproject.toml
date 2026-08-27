@@ -1,6 +1,6 @@
 [project]
 name = "integrand"
-version = "0.3.3"
+version = "0.3.4"
 description = "Screenshot a math expression, land on a step-by-step solver with it filled in"
 readme = "README.md"
 authors = [

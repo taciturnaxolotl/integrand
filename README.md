@@ -151,7 +151,7 @@ images and needs nothing else from the repo, so it can be copied to a host on
 its own:
 
 ```sh
-docker push ghcr.io/taciturnaxolotl/integrand:0.3.0
+docker push ghcr.io/taciturnaxolotl/integrand:0.3.4
 docker push ghcr.io/taciturnaxolotl/integrand-ocr:0.3.0
 
 # on the host, alongside compose.yaml
