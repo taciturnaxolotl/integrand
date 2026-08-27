@@ -293,6 +293,13 @@ HINTS = [
      "2*x + 15 + (59)/(x - 4)"),
     # but a single term is not partial fractions however apart restructures it
     (r"\int \frac{5}{6x+1} dx", "a substitution", "u = 6*x + 1"),
+    # `integral_steps` gives up on both of these, and one substitution finishes
+    # each: the search only tries inner functions it can integrate around
+    (r"\int \frac{2}{x\sqrt{4-(\ln(x))^2}} dx", "a substitution", "u = ln(x)"),
+    # and here the derivative comes back in a different basis than the
+    # integrand — sympy differentiates tan to tan^2 + 1
+    (r"\int \frac{(\sec(x))^2}{\sqrt{25-(\tan(x))^2}} dx", "a substitution",
+     "u = tan(x)"),
     # derivatives are read off the shape; there is no manualdiff to ask
     (r"\frac{d}{dx}(x^2\sin(x))", "the product rule", None),
     (r"\frac{d}{dx}(\frac{x}{x+1})", "the quotient rule", None),

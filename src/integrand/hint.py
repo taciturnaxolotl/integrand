@@ -159,7 +159,7 @@ def _substitution_hint(integrand, variable) -> Hint | None:
     applies, and a candidate that passes it is a substitution that works,
     whatever the search made of what came next.
     """
-    from sympy import Dummy, Function, Pow, cancel, count_ops, diff
+    from sympy import Dummy, Function, Pow, count_ops, diff, simplify
 
     inner = {
         arg
@@ -179,11 +179,13 @@ def _substitution_hint(integrand, variable) -> Hint | None:
         if du == 0:
             continue
         rewritten = (integrand / du).subs(candidate, u)
-        # The x usually cancels on its own; `cancel` is for the times it does
-        # not, and a candidate still holding an x after that is not a
-        # substitution at all.
+        # The x usually goes on its own. When it does not, it is often because
+        # the derivative came back in a different basis than the integrand —
+        # sympy differentiates tan to `tan^2 + 1`, and the `sec^2` in front of
+        # it only meets that once the two are put in the same terms. A
+        # candidate still holding an x after that is not a substitution at all.
         if rewritten.has(variable):
-            rewritten = cancel(rewritten)
+            rewritten = simplify(integrand / du).subs(candidate, u)
         if rewritten.has(variable) or not rewritten.has(u):
             continue
         size = count_ops(rewritten)
