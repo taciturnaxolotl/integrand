@@ -212,20 +212,27 @@ Two measured rules make that work:
   len 3  <msqrt><mn>12</mn></msqrt>        ← same text, escaped: keep 2
   ```
 
-  A probe that gains nothing is skipped rather than final, which is what lets
-  `x^2/` work. Measured on a live box, caret sitting after the `2`:
+  **An empty slot is what tells the two escapes apart.** A selection holding one
+  is never the term and never the end of the search either. Measured on a live
+  box, caret after the `2` in each:
 
   ```
-  len 1  <mn>2</mn>
-  len 2  <msup><mrow/><mn>2</mn></msup>     ← same text, and where it used to stop
-  len 3  <msup><mi>x</mi><mn>2</mn></msup>  ← gains the base: take it
+  x^2      len 2  <msup><mrow/><mn>2</mn></msup>      a hole: the base
+           len 3  <msup><mi>x</mi><mn>2</mn></msup>   reached it, take it
+  tan(12   len 3  <mfenced><mn>12</mn></mfenced>      no hole: the fence closed
+           len 4  <mi>n</mi><mfenced>…                the function itself
+  tan(     every length holds the same empty <mrow/>, so nothing is taken
   ```
 
-  The first position past the exponent is the empty base — a boundary, not an
-  answer — and stopping there is what built the fraction *inside* the exponent.
-  One position further is the whole power, so it **lifts into the numerator**.
-  An operator still stops the search outright; that is a different answer from
-  a range the editor would not give, and the two are kept apart.
+  A hole is a part of a structure the search has not reached yet, so it keeps
+  going and `x^2/` takes the whole power. No hole and no new text is a container
+  that closed around the caret, so it stops and a `/` inside `tan(…)` stays
+  inside. Standing in an empty slot there is nothing behind the caret at all,
+  and every selection from there holds that same hole — which is why `tan(`
+  followed by `\frac` builds the fraction in the parentheses rather than around
+  the tangent. An operator still stops the search outright, and a range the
+  editor would not give says nothing about the next one; the three are kept
+  apart.
 
 - **Where the denominator is, also by asking.** `S + L + 2` held only for a flat
   run of characters. A numerator holding a structure takes one position more
@@ -242,6 +249,9 @@ Two measured rules make that work:
   len 4  <msup><mi>x</mi><mn>2</mn></msup>              ← still the numerator
   len 5  <mfrac><msup>…</msup><mrow/></mfrac>           ← empty slot: stop at 4
   ```
+
+  Which is the same reading as the term search: a hole means this is not
+  content anyone typed.
 
 Given a selection starting at S of length L, the new numerator begins at `S+1`
 and the denominator at `S+L+2`. With nothing selected the fraction is empty and
@@ -345,6 +355,8 @@ what it looks like it should do. A fraction *inside* an exponent is built with
 
 ```
 x^2/9     <mfrac><msup><mi>x</mi><mn>2</mn></msup><mn>9</mn></mfrac>
+tan(/9    <mi>tan</mi><mfenced><mfrac><mn>9</mn><mrow/></mfrac></mfenced>
+tan(12/9  <mi>tan</mi><mfenced><mfrac><mn>12</mn><mn>9</mn></mfrac></mfenced>
 x^12/97   <mfrac><msup><mi>x</mi><mn>12</mn></msup><mn>97</mn></mfrac>
 x_2/9     <mfrac><msub><mi>x</mi><mn>2</mn></msub><mn>9</mn></mfrac>
 1/2/3     <mfrac><mfrac><mn>1</mn><mn>2</mn></mfrac><mn>3</mn></mfrac>

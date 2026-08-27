@@ -159,23 +159,24 @@
 	//: turn one keystroke into an unbounded loop.
 	const MAX_TERM = 40;
 
-	//: Two ways a probe can fail, and they mean opposite things. Reaching an
-	//: operator is the end of the term and stops the search; a selection that
-	//: cannot be read is one range the editor would not give, and the next one
-	//: may still be fine.
-	const PAST_TERM = Symbol("past the term");
-	const UNREADABLE = Symbol("not a selection we can read");
-
-	//: The text of a selection, or one of the two above.
-	function settled(selection) {
+	//: What one probe of the selection says. `null` is a range the editor would
+	//: not give, which says nothing about the next one. `past` is an operator,
+	//: which is the end of the term. `hollow` is an empty slot somewhere in the
+	//: selection, and it is the thing that tells the two escapes apart below.
+	function read(selection) {
 		const doc = new DOMParser().parseFromString(selection || "", "text/xml");
-		if (doc.querySelector("parsererror")) return UNREADABLE;
-		for (const node of doc.documentElement.childNodes) {
-			if (node.nodeName === "mspace") return UNREADABLE;
-			if (node.nodeName === "mo" && BREAKS.has(node.textContent.trim()))
-				return PAST_TERM;
-		}
-		return doc.documentElement.textContent;
+		if (doc.querySelector("parsererror")) return null;
+		const root = doc.documentElement;
+		const children = [...root.childNodes];
+		if (children.some((node) => node.nodeName === "mspace")) return null;
+		return {
+			text: root.textContent,
+			past: children.some(
+				(node) =>
+					node.nodeName === "mo" && BREAKS.has(node.textContent.trim()),
+			),
+			hollow: !!root.querySelector("mrow:empty"),
+		};
 	}
 
 	//: How much sits behind the caret, found by asking rather than by arithmetic.
@@ -190,16 +191,26 @@
 	//: So grow the selection a position at a time and read back what MathType
 	//: says is selected. It stops on its own at an operator, and text is the
 	//: test for everything else: a selection that gains some has taken more of
-	//: the term, and one that gains none has escaped into the structure around
-	//: it — `12` inside a square root becomes the whole `√12`, same text, and
-	//: the root is not part of the term.
+	//: the term, and one that gains none has closed a structure around it.
 	//:
-	//: A probe that gains nothing is skipped rather than final. Growing out of a
-	//: superscript is the case that made the difference: `x^2` then `/` used to
-	//: build the fraction inside the exponent, because the first position past
-	//: the `2` is a boundary and the search stopped there. Two positions past it
-	//: is `x2`, which gains the base, so the whole power lifts into the
-	//: numerator — which is what `x^2/` looks like it should do.
+	//: A selection with a hole in it is never the term, and never the end of
+	//: the search either. Measured on a live box:
+	//:
+	//:     x^2, caret after the 2
+	//:       len 2  <msup><mrow/><mn>2</mn></msup>      a hole: the base
+	//:       len 3  <msup><mi>x</mi><mn>2</mn></msup>   reached it, take it
+	//:     tan(12, caret after the 2
+	//:       len 3  <mfenced><mn>12</mn></mfenced>      no hole: the fence
+	//:       len 4  <mi>n</mi><mfenced>…                the function itself
+	//:     tan(, caret in the empty parentheses
+	//:       every length holds the empty <mrow/>, so nothing is ever taken
+	//:
+	//: A hole is a part of a structure the search has not reached yet, so it
+	//: keeps going: `x^2/` takes the whole power. No hole and no gain is a
+	//: container that closed around the caret, so it stops: a `/` inside
+	//: `tan(…)` stays inside. And standing in an empty slot there is nothing
+	//: behind the caret to lift at all, which is the `tan(` case — every
+	//: selection there holds that same hole.
 	//:
 	//: One transaction around the whole search, not one per probe. Each
 	//: begin/end pair is a repaint, and a term of any length was costing a
@@ -215,18 +226,20 @@
 				length <= MAX_TERM && caret - length >= 0;
 				length++
 			) {
-				let text;
+				let found;
 				try {
 					model.setCaret(caret - length, length);
-					text = settled(model.getSelectionMathML());
+					found = read(model.getSelectionMathML());
 				} catch {
 					// A range the editor will not take says nothing about the next
 					// one; a boundary is exactly where that happens.
 					continue;
 				}
-				if (text === PAST_TERM) break;
-				if (text === UNREADABLE || text.length <= seen.length) continue;
-				seen = text;
+				if (!found) continue;
+				if (found.past) break;
+				if (found.hollow) continue;
+				if (found.text.length <= seen.length) break;
+				seen = found.text;
 				best = length;
 			}
 		} finally {
@@ -257,18 +270,14 @@
 		model.beginEventTransaction();
 		try {
 			for (let length = 1; length <= MAX_TERM; length++) {
-				let filled = false;
+				let found = null;
 				try {
 					model.setCaret(from, length);
-					const doc = new DOMParser().parseFromString(
-						model.getSelectionMathML() || "",
-						"text/xml",
-					);
-					filled =
-						!doc.querySelector("parsererror") &&
-						!doc.querySelector("mrow:empty, mspace");
+					found = read(model.getSelectionMathML());
 				} catch {}
-				if (!filled) break;
+				// An operator is fine in a numerator; a hole is the fraction's own
+				// empty denominator, which is one position too far.
+				if (!found || found.hollow) break;
 				best = length;
 			}
 		} finally {
