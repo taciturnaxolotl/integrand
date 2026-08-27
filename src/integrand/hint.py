@@ -145,13 +145,63 @@ def _rational_hint(integrand, variable) -> Hint | None:
     return Hint("partial fractions", detail)
 
 
+def _substitution_hint(integrand, variable) -> Hint | None:
+    """Look for a substitution of our own when sympy has given up.
+
+    `integral_steps` hands back `DontKnowRule` for plenty of integrals that a
+    single substitution finishes — `2/(x sqrt(4 - ln(x)^2))` is one, because it
+    only tries the inner functions it can already integrate the outside of.
+    But naming u does not require integrating anything: u works when the
+    integrand divided by du/dx, written in u, has no x left in it.
+
+    So try every inner function and power base in the expression and keep the
+    one that leaves the tidiest integrand. That is the same test a student
+    applies, and a candidate that passes it is a substitution that works,
+    whatever the search made of what came next.
+    """
+    from sympy import Dummy, Function, Pow, cancel, count_ops, diff
+
+    inner = {
+        arg
+        for call in integrand.atoms(Function)
+        for arg in call.args
+        if arg.has(variable) and arg != variable
+    } | {
+        power.base
+        for power in integrand.atoms(Pow)
+        if power.base.has(variable) and power.base != variable
+    }
+
+    u = Dummy("u")
+    best = None
+    for candidate in inner:
+        du = diff(candidate, variable)
+        if du == 0:
+            continue
+        rewritten = (integrand / du).subs(candidate, u)
+        # The x usually cancels on its own; `cancel` is for the times it does
+        # not, and a candidate still holding an x after that is not a
+        # substitution at all.
+        if rewritten.has(variable):
+            rewritten = cancel(rewritten)
+        if rewritten.has(variable) or not rewritten.has(u):
+            continue
+        size = count_ops(rewritten)
+        if best is None or size < best[0]:
+            best = (size, candidate)
+
+    return Hint("a substitution", f"u = {_show(best[1])}") if best else None
+
+
 def for_integral(integrand, variable) -> Hint | None:
     from sympy.integrals.manualintegrate import integral_steps
 
     try:
         if found := _rational_hint(integrand, variable):
             return found
-        return _describe(integral_steps(integrand, variable))
+        return _describe(integral_steps(integrand, variable)) or _substitution_hint(
+            integrand, variable
+        )
     except Exception:
         return None
 
