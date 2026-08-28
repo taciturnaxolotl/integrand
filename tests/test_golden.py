@@ -75,6 +75,9 @@ OCR_SHAPES = [
     ("\\frac{∂}{∂y}(xy^{2})", "x*y^(2)", "y"),
     ("∫ x^{2}dx", "x^(2)", "x"),
     ("∫ 2πrdr", "2*pi*r", "r"),
+    # a rendered bound copies out with a fraction slash rather than a solidus
+    ("\\int_{0}^{1\u20445} \\frac{5}{\\sqrt{1 \u2212 25x^{2}}} dx",
+     "(5)/(sqrt(1 - (25*x^(2))))", "x"),
     # pix2tex wraps the operator in a redundant brace group and spaces `d x`
     (r"{\frac{d}{d x}}(x^{2})", "x^(2)", "x"),
     (r"\int{\frac{2x^{2}+7x-1}{x-4}}d x", "((2*x^(2) + 7*x) - 1)/(x - 4)", "x"),

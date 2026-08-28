@@ -60,6 +60,9 @@ _UNICODE = {
     "\u2014": "-",  # em dash
     "\u00b7": "*",  # middle dot
     "\u00d7": "*",  # multiplication sign
+    "\u2044": "/",  # fraction slash — what a rendered ⅕ copies out as
+    "\u2215": "/",  # division slash
+    "\u00f7": "/",  # division sign
     "\u221e": r"\infty ",
     "\u03c0": r"\pi ",
     "\u2202": r"\partial ",
