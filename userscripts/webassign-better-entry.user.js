@@ -2,7 +2,7 @@
 // @name         WebAssign nice entry
 // @author       Kieran Klukas
 // @namespace    dunkirk.sh
-// @version      4.6.0
+// @version      4.6.1
 // @description  Restores MathQuill-style typing to WebAssign's MathType boxes.
 // @match        *://*.webassign.net/*
 // @run-at       document-idle
@@ -768,6 +768,6 @@
 	}
 
 	console.log(
-		"[better-entry] 4.6 — native fractions, scripts, fences, deletion, command menu, unsticking, answer guard",
+		"[better-entry] 4.6.1 — native fractions, scripts, fences, deletion, command menu, unsticking, answer guard",
 	);
 })();
